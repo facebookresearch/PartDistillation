@@ -1,0 +1,11 @@
+cython
+scipy
+shapely
+timm
+h5py
+submitit
+scikit-image
+scikit-learn
+pycocotools
+wandb
+panoptic_parts

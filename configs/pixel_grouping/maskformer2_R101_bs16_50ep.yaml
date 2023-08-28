@@ -1,0 +1,28 @@
+_BASE_: ../mask2former/coco/instance-segmentation/maskformer2_R50_bs16_50ep.yaml
+DATASETS:
+  TRAIN: ("imagenet_22k_train",)
+  TEST: ("part_imagenet_match_val","part_imagenet_evaluate_val",)
+MODEL:
+  WEIGHTS: "weights/backbone/R-101.pkl"
+  META_ARCHITECTURE: "ClusteringBaseline"
+  RESNETS:
+    DEPTH: 101
+    STEM_TYPE: "basic"  # not used
+    STEM_OUT_CHANNELS: 64
+    STRIDE_IN_1X1: False
+    OUT_FEATURES: ["res2", "res3", "res4", "res5"]
+    # NORM: "SyncBN"
+    RES5_MULTI_GRID: [1, 1, 1]  # not used
+INPUT:
+  MIN_SIZE_TRAIN: (640,)
+  MIN_SIZE_TEST: 640
+  IMAGE_SIZE: 640
+  MASK_FORMAT: "bitmask"
+  SIZE_DIVISIBILITY: 16
+TEST:
+  EVAL_PERIOD: 5000
+  DETECTIONS_PER_IMAGE: 200
+SOLVER:
+  IMS_PER_BATCH: 32
+WANDB:
+  PROJECT: "ClusteringBaseline"

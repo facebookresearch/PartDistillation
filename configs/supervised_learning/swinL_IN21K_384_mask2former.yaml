@@ -1,0 +1,24 @@
+_BASE_: ../mask2former/coco/instance-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_100ep.yaml
+DATASETS:
+  TRAIN: ("pascal_part_train",)
+  TEST: ("pascal_part_valtest",)
+MODEL:
+  SWIN:
+    USE_CHECKPOINT: False 
+  WEIGHTS: "weights/m2f/instance/swinL_i21k_q200_e100.pkl"
+  META_ARCHITECTURE: "SupervisedModel"
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 50
+INPUT:
+  MIN_SIZE_TRAIN: (640,)
+  MAX_SIZE_TRAIN: 640
+  IMAGE_SIZE: 640
+  MASK_FORMAT: "bitmask"
+  SIZE_DIVISIBILITY: 16
+TEST:
+  EVAL_PERIOD: 5000
+  DETECTIONS_PER_IMAGE: 200
+SOLVER:
+  IMS_PER_BATCH: 32
+WANDB:
+  PROJECT: "supervised_learning"
