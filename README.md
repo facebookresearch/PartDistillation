@@ -4,7 +4,7 @@ PartDistillation learns to segment parts over 10k object categories without labe
 
 <p align="center"> <img src='teaser.png' align="center" height="230px"> </p>
 
-> [**PartDistillation: Learning Parts from Instance Segmentation**](http://arxiv.org/abs/xxxx),            
+> [**PartDistillation: Learning Parts from Instance Segmentation**](https://openaccess.thecvf.com/content/CVPR2023/papers/Cho_PartDistillation_Learning_Parts_From_Instance_Segmentation_CVPR_2023_paper.pdf),            
 > [Jang Hyun Cho](https://janghyuncho.github.io), [Philipp Kr&auml;henb&uuml;hl](http://www.philkr.net), [Vignash Ramanathan](http://ai.stanford.edu/~vigneshr/),   
 > *CVPR 2023 [[paper](https://openaccess.thecvf.com/content/CVPR2023/papers/Cho_PartDistillation_Learning_Parts_From_Instance_Segmentation_CVPR_2023_paper.pdf), [project page](https://janghyuncho.github.io/PartDistillation_website/)*]
 
