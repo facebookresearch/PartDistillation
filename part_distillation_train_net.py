@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 import warnings
 warnings.filterwarnings('ignore', category=UserWarning)
 try:
@@ -12,14 +13,14 @@ try:
 except:
     pass
 
-import sys
-import os
+import sys 
+import os 
 import torch
-import torch.nn as nn
-import numpy as np
+import torch.nn as nn 
+import numpy as np 
 import logging
 import detectron2.utils.comm as comm
-import wandb
+import wandb 
 
 sys.path.append('Detic/third_party/CenterNet2')
 sys.path.append('Detic/third_party/Deformable-DETR')
@@ -29,8 +30,8 @@ from pathlib import Path
 
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
-from detectron2.data import (MetadataCatalog,
-                             build_detection_test_loader,
+from detectron2.data import (MetadataCatalog, 
+                             build_detection_test_loader, 
                              build_detection_train_loader)
 
 from detectron2.engine import (default_argument_parser,
@@ -42,8 +43,8 @@ from detectron2.utils.logger import setup_logger
 from detectron2.utils.comm import is_main_process, synchronize
 from detectron2.evaluation import verify_results, inference_on_dataset, print_csv_format
 
-from part_distillation import (add_maskformer2_config,
-                               add_wandb_config,
+from part_distillation import (add_maskformer2_config, 
+                               add_wandb_config, 
                                add_custom_datasets_config,
                                add_part_distillation_config)
 
@@ -62,7 +63,7 @@ from part_distillation.data.dataset_mappers.part_imagenet_mapper import PartImag
 
 from part_distillation.evaluation.miou_evaluator import mIOU_Evaluator
 from part_distillation.evaluation.miou_matcher import mIOU_Matcher
-
+ 
 from base_trainer import BaseTrainer, maybe_dp, get_mode
 
 
@@ -71,17 +72,17 @@ class Trainer(BaseTrainer):
     @classmethod
     def build_evaluator(cls, cfg, dataset_name):
         if "match" in dataset_name:
-            return mIOU_Matcher(dataset_name,
+            return mIOU_Matcher(dataset_name, 
                                 num_classes=cfg.PART_DISTILLATION.NUM_PART_CLASSES)
         elif "evaluate" in dataset_name:
             return mIOU_Evaluator(dataset_name)
-
+    
     @classmethod
     def build_test_loader(cls, cfg, dataset_name):
         if "pascal" in dataset_name:
             mapper = VOCPartsMapper(cfg, is_train=False)
         elif "part_imagenet" in dataset_name:
-            mapper = PartImageNetMapper(cfg, is_train=False)
+            mapper = PartImageNetMapper(cfg, dataset_name, is_train=False)
         elif "cityscapes" in dataset_name:
             mapper = CityscapesPartMapper(cfg, is_train=False)
         elif "save_labels" in dataset_name:
@@ -105,18 +106,19 @@ class Trainer(BaseTrainer):
             mode = get_mode(dataset_name)
             logger.info("Starting {} mode on {}.".format(mode, dataset_name))
             maybe_dp(model).register_metadata(dataset_name)
-            maybe_dp(model).mode = mode
+            maybe_dp(model).mode = mode 
 
             data_loader = cls.build_test_loader(cfg, dataset_name)
             evaluator = cls.build_evaluator(cfg, dataset_name)
             results_i = inference_on_dataset(model, data_loader, evaluator)
-
+            
             if mode == "match":
                 maybe_dp(model).update_majority_vote_mapping(results_i)
                 logger.info("Majority vote result:\n{}".format(results_i))
-                continue
-            maybe_dp(model).mode = "" # reset mode.
-
+                continue 
+            maybe_dp(model).register_metadata(cfg.DATASETS.TRAIN[0]) # reset to training dataset.
+            maybe_dp(model).mode = ""                                # reset mode. 
+  
             results.update(results_i)
             if comm.is_main_process():
                 assert isinstance(results_i, dict), \
@@ -125,15 +127,18 @@ class Trainer(BaseTrainer):
                 print_csv_format(results_i)
             comm.synchronize()
 
+            # add dataset name
+            results = {dataset_name + "_" + k: v for k, v in results.items()}
+
         if len(results) == 1:
             results = list(results.values())[0]
-
+        
         comm.synchronize()
         if comm.is_main_process() and not cfg.WANDB.DISABLE_WANDB:
             wandb.log(results)
 
         return results
-
+        
 
 def setup(args):
     cfg = get_cfg()
@@ -150,7 +155,7 @@ def setup(args):
 
     # Setup logger for "mask_former" module
     setup_logger(output=cfg.OUTPUT_DIR, distributed_rank=comm.get_rank(), name="part_distillation")
-
+    
     # for part-imagenet mapping.
     register_imagenet("imagenet_1k_meta_train", "train",
                       partitioned_imagenet=False)
@@ -168,7 +173,7 @@ def setup(args):
 
     for dataset_name in cfg.DATASETS.TEST:
         if "part_imagenet" in dataset_name:
-            register_part_imagenet(name=dataset_name,
+            register_part_imagenet(name=dataset_name, 
                                    images_dirname=cfg.CUSTOM_DATASETS.PART_IMAGENET.IMAGES_DIRNAME,
                                    annotations_dirname=cfg.CUSTOM_DATASETS.PART_IMAGENET.ANNOTATIONS_DIRNAME,
                                    split=dataset_name.split('_')[-1],
@@ -184,7 +189,7 @@ def setup(args):
                                      path_only=cfg.CUSTOM_DATASETS.CITYSCAPES_PART.PATH_ONLY,
                                      debug=cfg.CUSTOM_DATASETS.CITYSCAPES_PART.DEBUG,
                                     )
-
+            
         elif "pascal" in dataset_name:
             register_pascal_parts(
                 name=dataset_name,
@@ -201,7 +206,7 @@ def setup(args):
                                                 cfg.PART_DISTILLATION.DATASET_PATH,
                                                 "train",
                                                 partitioned_imagenet=bool(cfg.PART_DISTILLATION.TOTAL_PARTITIONS > 0),
-                                                total_partitions=cfg.PART_DISTILLATION.TOTAL_PARTITIONS,
+                                                total_partitions=cfg.PART_DISTILLATION.TOTAL_PARTITIONS, 
                                                 partition_index=cfg.PART_DISTILLATION.PARTITION_INDEX,
                                                 dataset_path_list=cfg.PART_DISTILLATION.DATASET_PATH_LIST,
                                                 filtered_code_path_list=cfg.PART_DISTILLATION.FILTERED_CODE_PATH_LIST,
@@ -218,7 +223,7 @@ def setup(args):
 def main(args):
     cfg = setup(args)
     if comm.is_main_process() and not cfg.WANDB.DISABLE_WANDB:
-        run_name = cfg.WANDB.RUN_NAME
+        run_name = cfg.WANDB.RUN_NAME 
         wandb.init(project=cfg.WANDB.PROJECT, sync_tensorboard=True, name=run_name,
          group=cfg.WANDB.GROUP, config=cfg.PART_DISTILLATION, dir=cfg.OUTPUT_DIR)
 
@@ -233,13 +238,13 @@ def main(args):
         if comm.is_main_process() and not cfg.WANDB.DISABLE_WANDB:
             wandb.finish()
         return res
-
+    
     trainer = Trainer(cfg)
     trainer.resume_or_load(resume=args.resume)
     res = trainer.train()
     if comm.is_main_process() and not cfg.WANDB.DISABLE_WANDB:
-        wandb.finish()
-    return res
+        wandb.finish() 
+    return res 
 
 
 if __name__ == "__main__":

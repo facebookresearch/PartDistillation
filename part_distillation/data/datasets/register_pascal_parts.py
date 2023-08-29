@@ -3,16 +3,17 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 import torch
 import logging
 import os
-import copy
+import copy 
 import numpy as np
 import pycocotools.mask as mask_util
 import scipy.io
 from typing import Any, Dict, List, Tuple, Union
 from detectron2.data import DatasetCatalog, MetadataCatalog
-from detectron2.data.datasets.pascal_voc import CLASS_NAMES, load_voc_instances
+from .pascal_voc import CLASS_NAMES, load_voc_instances
 from detectron2.structures import BoxMode
 from detectron2.utils.file_io import PathManager
 from .pascal_info import get_orig_part, categories
@@ -35,7 +36,7 @@ def mask_to_bbox(mask: np.ndarray) -> Tuple[float, float, float, float]:
     return x1, y1, x2, y2
 
 
-def get_part_annotation_dict(part_instance: Any, subset_class_names: Union[List[str], Any],
+def get_part_annotation_dict(part_instance: Any, subset_class_names: Union[List[str], Any], 
                              encode=True, subset_part_name_to_ids={}) -> Tuple[Dict, List]:
     class_name = part_instance[0][0]
     if class_name == "table":
@@ -57,7 +58,7 @@ def get_part_annotation_dict(part_instance: Any, subset_class_names: Union[List[
             {
                 "part_category": p[0][0],
                 "orig_part_category": orig_part_name,
-                "orig_part_category_id": subset_part_name_to_ids[orig_part_name],
+                "orig_part_category_id": subset_part_name_to_ids[orig_part_name], 
                 "bbox": mask_to_bbox(p[1]),
                 "bbox_mode": BoxMode.XYXY_ABS,
                 "segmentation": mask_util.encode(p[1]) if encode else p[1],
@@ -100,19 +101,20 @@ def load_pascal_parts_instances(
             dict["annotations"] = []
             for inst in instances:
                 if inst[0][0] in subset_class_names:
-                    object_annotation, part_annotations = get_part_annotation_dict(inst,
-                                                            subset_class_names=subset_class_names,
+                    object_annotation, part_annotations = get_part_annotation_dict(inst, 
+                                                            subset_class_names=subset_class_names, 
                                                             subset_part_name_to_ids=subset_part_name_to_ids)
-
-                    # for segmentation, each instance is saved in a separate dict.
+                    
+                    # for segmentation, each instance is saved in a separate dict. 
                     if for_segmentation:
                         new_dict = copy.deepcopy(dict)
-
-                        # some object has no parts.
+                        
+                        # some object has no parts. 
                         if len(part_annotations) > 0:
                             new_dict["annotations"].append(object_annotation)
                             new_dict["part_annotations"].append(part_annotations)
                             final_dicts.append(new_dict)
+                            num_found += 1
                     else:
                         if len(part_annotations) > 0:
                             dict["annotations"].append(object_annotation)
@@ -124,7 +126,7 @@ def load_pascal_parts_instances(
                 num_found += 1
 
     if label_percentage < 100:
-        # shuffle and pick first n.
+        # shuffle and pick first n. 
         np.random.seed(1234)
         np.random.shuffle(final_dicts)
 
@@ -144,41 +146,41 @@ def register_pascal_parts(
     subset_class_names=None,
     label_percentage: int=100,
     for_segmentation: bool=False,
-    debug=False,
-):
+    debug=False, 
+):  
     """
     subset_class_names: Subset of PascalParts classes to use,
-    label_percentage: Percentage of labels to register. Used for few-shot learning.
-    for_segmentation: For segmentation evaluation, each image has one object instance.
-                      Dataset will then have duplicate images.
-    debug: For quick dubugging, only register a small portion.
+    label_percentage: Percentage of labels to register. Used for few-shot learning. 
+    for_segmentation: For segmentation evaluation, each image has one object instance. 
+                      Dataset will then have duplicate images. 
+    debug: For quick dubugging, only register a small portion. 
     """
     if len(images_dirname) == 0:
-        images_dirname = PASCALPARTS_DATASET_PATH
+        images_dirname = PASCALPARTS_DATASET_PATH 
     if len(annotations_dirname) == 0:
-        annotations_dirname = PASCALPARTS_ANNOTATION_PATH
+        annotations_dirname = PASCALPARTS_ANNOTATION_PATH 
     if subset_class_names is not None and len(subset_class_names) > 0:
         subset_class_names = sorted(subset_class_names)
     else:
-        subset_class_names = CLASS_NAMES
+        subset_class_names = CLASS_NAMES 
 
     pid = 0
     subset_part_name_to_ids = {}
     for class_name in subset_class_names:
         if class_name == "table":
             class_name = "diningtable"
-
-        # part IDs are re-defined for subset classes.
+        
+        # part IDs are re-defined for subset classes. 
         for part in OBJ_NAMES_TO_PART_NAMES_DICT[class_name]:
             pname = part.orig_name
             if pname not in subset_part_name_to_ids:
-                subset_part_name_to_ids[pname] = pid
-                pid += 1
+                subset_part_name_to_ids[pname] = pid 
+                pid += 1 
 
     DatasetCatalog.register(
         name,
         lambda: load_pascal_parts_instances(
-            images_dirname, annotations_dirname, split,
+            images_dirname, annotations_dirname, split, 
             subset_class_names=subset_class_names,
             subset_part_name_to_ids=subset_part_name_to_ids,
             label_percentage=label_percentage,
@@ -187,11 +189,13 @@ def register_pascal_parts(
         ),
     )
     MetadataCatalog.get(name).set(
-        thing_classes=list(subset_class_names),
+        thing_classes=list(subset_class_names), 
         part_classes=list(subset_part_name_to_ids.keys()),
-        classes=list(subset_part_name_to_ids.keys()),
+        classes=list(subset_part_name_to_ids.keys()), 
         dirname=images_dirname,
         annotations_dirname=annotations_dirname,
         year=year,
         split=split,
     )
+
+

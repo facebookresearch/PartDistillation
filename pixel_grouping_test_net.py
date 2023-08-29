@@ -3,6 +3,8 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
+
 import warnings
 warnings.filterwarnings('ignore', category=UserWarning)
 try:
@@ -11,14 +13,17 @@ try:
     warnings.filterwarnings('ignore', category=ShapelyDeprecationWarning)
 except:
     pass
-
+    
+import urllib3
+warnings.simplefilter('ignore', urllib3.exceptions.SubjectAltNameWarning)
+warnings.filterwarnings('ignore', category=FutureWarning)
 import copy
 import logging
 import os
-import sys
+import sys 
 import torch
 import detectron2.utils.comm as comm
-import wandb
+import wandb 
 
 sys.path.append('Detic/third_party/CenterNet2')
 sys.path.append('Detic/third_party/Deformable-DETR')
@@ -26,7 +31,7 @@ sys.path.append('Detic/third_party/Deformable-DETR')
 from collections import OrderedDict
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
-from detectron2.data import (MetadataCatalog,
+from detectron2.data import (MetadataCatalog, 
                              build_detection_test_loader)
 
 from detectron2.engine import (DefaultTrainer,
@@ -39,9 +44,9 @@ from detectron2.utils.logger import setup_logger
 from detectron2.utils.comm import is_main_process, synchronize
 from detectron2.evaluation import verify_results, inference_on_dataset, print_csv_format
 
-from part_distillation import (add_maskformer2_config,
-                               add_wandb_config,
-                               add_pixel_grouping_confing,
+from part_distillation import (add_maskformer2_config, 
+                               add_wandb_config, 
+                               add_pixel_grouping_confing, 
                                add_custom_datasets_config)
 
 from part_distillation.data.datasets.register_imagenet import register_imagenet
@@ -69,7 +74,7 @@ class Trainer(DefaultTrainer):
             data_loader = cls.build_test_loader(cfg, dataset_name)
             evaluator = cls.build_evaluator(cfg, dataset_name)
             results_i = inference_on_dataset(model, data_loader, evaluator)
-
+  
             results.update(results_i)
             if comm.is_main_process():
                 assert isinstance(results_i, dict), \
@@ -80,13 +85,13 @@ class Trainer(DefaultTrainer):
 
         if len(results) == 1:
             results = list(results.values())[0]
-
+        
         comm.synchronize()
         if comm.is_main_process() and not cfg.WANDB.DISABLE_WANDB:
             wandb.log(results)
 
         return results
-
+        
 
 def setup(args):
     """
@@ -106,12 +111,12 @@ def setup(args):
 
     # Setup logger
     setup_logger(output=cfg.OUTPUT_DIR, distributed_rank=comm.get_rank(), name="part_distillation")
-    # To use the metadata
+    # To use the metadata 
     register_imagenet("imagenet_1k_meta_train", "train",
                       partitioned_imagenet=False)
     for dataset_name in cfg.DATASETS.TEST:
         if "part_imagenet" in dataset_name:
-            register_part_imagenet(name=dataset_name,
+            register_part_imagenet(name=dataset_name, 
                                    images_dirname=cfg.CUSTOM_DATASETS.PART_IMAGENET.IMAGES_DIRNAME,
                                    annotations_dirname=cfg.CUSTOM_DATASETS.PART_IMAGENET.ANNOTATIONS_DIRNAME,
                                    split=dataset_name.split('_')[-1],
@@ -119,14 +124,14 @@ def setup(args):
                                   )
         else:
             raise ValueError("{} not supported for pixel grouping evaluation.".format(dataset_name))
-
+        
     return cfg
 
 
 def main(args):
     cfg = setup(args)
     if comm.is_main_process() and not cfg.WANDB.DISABLE_WANDB:
-        run_name = cfg.WANDB.RUN_NAME
+        run_name = cfg.WANDB.RUN_NAME 
         wandb.init(project=cfg.WANDB.PROJECT, sync_tensorboard=True, name=run_name,
          group=cfg.WANDB.GROUP, config=cfg.PIXEL_GROUPING, dir=cfg.VIS_OUTPUT_DIR)
 
@@ -142,7 +147,7 @@ def main(args):
         wandb.finish()
     return res
 
-
+   
 
 
 if __name__ == "__main__":

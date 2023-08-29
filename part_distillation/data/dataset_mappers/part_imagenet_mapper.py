@@ -2,9 +2,11 @@
 
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
+
+
 import copy
 import logging
-import os
+import os 
 import numpy as np
 import torch
 
@@ -26,7 +28,7 @@ def correct_part_imagenet_path(_dataset_dict):
     iname = _dataset_dict["file_name"].split('/')[-1]
     path = "/".join(_dataset_dict["file_name"].split('/')[:-1])
     path = os.path.join(path, fname, iname)
-    _dataset_dict["file_name"] = path
+    _dataset_dict["file_name"] = path 
     _dataset_dict["class_code"] = fname
 
 
@@ -69,10 +71,10 @@ class PartImageNetMapper:
         self.num_repeats = 20  # number of repeats until give up.
         self.use_merged_gt = use_merged_gt
         self.class_code_to_class_id = class_code_to_class_id
-
+    
 
     @classmethod
-    def from_config(cls, cfg, is_train=True):
+    def from_config(cls, cfg, dataset_name="part_imagenet_valtest", is_train=True):
         # Build augmentation
         augs = [
             T.ResizeShortestEdge(
@@ -81,7 +83,7 @@ class PartImageNetMapper:
                 cfg.INPUT.MIN_SIZE_TRAIN_SAMPLING,
             )
         ]
-
+        
         if is_train:
             augs.append(T.RandomFlip())
             if cfg.INPUT.COLOR_AUG_SSD:
@@ -94,10 +96,10 @@ class PartImageNetMapper:
                     )
                 )
 
-        # NOTE:This needs to be always from imagenet_1k_train!
-        class_code_to_class_id = MetadataCatalog.get("imagenet_1k_meta_train").class_code_to_class_id
-
-        # NOTE: Need to convert to the proper vocabulary.
+        # NOTE:This needs to be always from imagenet_1k_train! 
+        class_code_to_class_id = MetadataCatalog.get(dataset_name).imagenet_1k_class_code_to_class_id
+        
+        # NOTE: Need to convert to the proper vocabulary. 
         if "22k" in  cfg.DATASETS.TRAIN[0]:
             map_1k_to_22k = torch.load("metadata/imagenet1k_to_22k_mapping.pkl")
             class_code_to_class_id = {k: map_1k_to_22k[i] for k, i in class_code_to_class_id.items()}
@@ -126,15 +128,15 @@ class PartImageNetMapper:
 
         self._transform_part_annotations(dataset_dict, transforms, image_shape)
         self._transform_object_annotations(dataset_dict, transforms, image_shape)
-
+        
         # Pytorch's dataloader is efficient on torch.Tensor due to shared-memory,
         # but not efficient on large generic data structures due to the use of pickle & mp.Queue.
         # Therefore it's important to use torch.Tensor.
         dataset_dict["image"] = torch.as_tensor(np.ascontiguousarray(image.transpose(2, 0, 1)))
-
+        
         if hasattr(dataset_dict["part_instances"], "gt_masks"):
             return dataset_dict
-
+        
 
 
     def __call__(self, _dataset_dict):
@@ -153,8 +155,8 @@ class PartImageNetMapper:
             for _ in range(self.num_repeats):
                 dataset_dict = self._forward_with_aug(_dataset_dict, self.aug)
                 if dataset_dict["part_instances"].has("gt_masks") \
-                and len(dataset_dict["part_instances"]) > 0:
-                    return dataset_dict
+                and len(dataset_dict["part_instances"]) > 0:  
+                    return dataset_dict 
 
             return self._forward_with_aug(_dataset_dict, [])
         else:
@@ -162,9 +164,9 @@ class PartImageNetMapper:
 
 
 
-    def _transform_part_annotations(self,
-                               dataset_dict: Dict[str, Any],
-                               transforms: Any,
+    def _transform_part_annotations(self, 
+                               dataset_dict: Dict[str, Any], 
+                               transforms: Any, 
                                image_shape: Tuple):
         annos = [
             utils.transform_instance_annotations(obj, transforms, image_shape, keypoint_hflip_indices=False)
@@ -182,7 +184,7 @@ class PartImageNetMapper:
             if self.use_merged_gt:
                 mask_all = instances.gt_masks.tensor
                 label_all = instances.gt_classes
-                unique_classes = instances.gt_classes.unique()
+                unique_classes = instances.gt_classes.unique() 
                 merged_masks = []
                 for c in unique_classes:
                     merged_masks.append(mask_all[label_all==c].sum(0))
@@ -196,9 +198,9 @@ class PartImageNetMapper:
             # some annotation has no part (will be resampled).
             dataset_dict["part_instances"] = instances
 
-    def _transform_object_annotations(self,
-                                      dataset_dict: Dict[str, Any],
-                                      transforms: Any,
+    def _transform_object_annotations(self,  
+                                      dataset_dict: Dict[str, Any], 
+                                      transforms: Any, 
                                       image_shape: Tuple):
 
         if hasattr(dataset_dict["part_instances"], "gt_masks"):
@@ -209,3 +211,4 @@ class PartImageNetMapper:
             new_instances.set("gt_classes", torch.tensor([self.class_code_to_class_id[class_code]]))
 
             dataset_dict["instances"] = new_instances
+

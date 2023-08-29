@@ -13,14 +13,14 @@ try:
 except:
     pass
 
-import sys
-import os
+import sys 
+import os 
 import torch
-import torch.nn as nn
-import numpy as np
+import torch.nn as nn 
+import numpy as np 
 import logging
 import detectron2.utils.comm as comm
-import wandb
+import wandb 
 
 sys.path.append('Detic/third_party/CenterNet2')
 sys.path.append('Detic/third_party/Deformable-DETR')
@@ -30,8 +30,8 @@ from pathlib import Path
 
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
-from detectron2.data import (MetadataCatalog,
-                             build_detection_test_loader,
+from detectron2.data import (MetadataCatalog, 
+                             build_detection_test_loader, 
                              build_detection_train_loader)
 
 from detectron2.engine import (default_argument_parser,
@@ -43,9 +43,9 @@ from detectron2.utils.logger import setup_logger
 from detectron2.utils.comm import is_main_process, synchronize
 from detectron2.evaluation import verify_results, inference_on_dataset, print_csv_format
 
-from part_distillation import (add_maskformer2_config,
-                               add_wandb_config,
-                               add_supervised_model_config,
+from part_distillation import (add_maskformer2_config, 
+                               add_wandb_config, 
+                               add_supervised_model_config, 
                                add_fewshot_learning_config,
                                add_custom_datasets_config)
 
@@ -69,7 +69,7 @@ class Trainer(BaseTrainer):
         if cfg.SUPERVISED_MODEL.CLASS_AGNOSTIC_LEARNING \
         or cfg.SUPERVISED_MODEL.CLASS_AGNOSTIC_INFERENCE:
             return ProposalEvaluator()
-        else:
+        else:        
             return Supervised_mIOU_Evaluator(dataset_name, cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES)
 
 
@@ -78,10 +78,10 @@ class Trainer(BaseTrainer):
         if "pascal" in cfg.DATASETS.TRAIN[0]:
             mapper = VOCPartsMapper(cfg, is_train=True)
         elif "part_imagenet" in cfg.DATASETS.TRAIN[0]:
-            mapper = PartImageNetMapper(cfg, is_train=True)
+            mapper = PartImageNetMapper(cfg, cfg.DATASETS.TRAIN[0], is_train=True)
         elif "cityscapes" in cfg.DATASETS.TRAIN[0]:
             mapper = CityscapesPartMapper(cfg, is_train=True)
-
+        
         return build_detection_train_loader(cfg, mapper=mapper)
 
 
@@ -90,7 +90,7 @@ class Trainer(BaseTrainer):
         if "pascal" in dataset_name:
             mapper = VOCPartsMapper(cfg, is_train=False)
         elif "part_imagenet" in dataset_name:
-            mapper = PartImageNetMapper(cfg, is_train=False)
+            mapper = PartImageNetMapper(cfg, dataset_name, is_train=False)
         elif "cityscapes" in dataset_name:
             mapper = CityscapesPartMapper(cfg, is_train=False)
 
@@ -116,7 +116,7 @@ class Trainer(BaseTrainer):
                 logger.info("Evaluation results for {} in csv format:".format(dataset_name))
                 print_csv_format(results_i)
             comm.synchronize()
-
+        
         if len(results) == 1:
             results = list(results.values())[0]
 
@@ -125,7 +125,7 @@ class Trainer(BaseTrainer):
             wandb.log(results)
 
         return results
-
+        
 
 def setup(args):
     """
@@ -144,16 +144,16 @@ def setup(args):
     cfg.freeze()
     default_setup(cfg, args)
 
-    # Setup logger
+    # Setup logger 
     setup_logger(output=cfg.OUTPUT_DIR, distributed_rank=comm.get_rank(), name="supervised")
-
+    
     # for part-imagenet mapping.
     register_imagenet("imagenet_1k_meta_train", "train",
                       partitioned_imagenet=False)
 
     # register dataset
     if "part_imagenet" in cfg.DATASETS.TRAIN[0]:
-        register_part_imagenet(name=cfg.DATASETS.TRAIN[0],
+        register_part_imagenet(name=cfg.DATASETS.TRAIN[0], 
                                 images_dirname=cfg.CUSTOM_DATASETS.PART_IMAGENET.IMAGES_DIRNAME,
                                 annotations_dirname=cfg.CUSTOM_DATASETS.PART_IMAGENET.ANNOTATIONS_DIRNAME,
                                 split=cfg.DATASETS.TRAIN[0].split('_')[-1],
@@ -170,7 +170,7 @@ def setup(args):
                                     path_only=cfg.CUSTOM_DATASETS.CITYSCAPES_PART.PATH_ONLY,
                                     debug=cfg.CUSTOM_DATASETS.CITYSCAPES_PART.DEBUG,
                                 )
-
+        
     elif "pascal" in cfg.DATASETS.TRAIN[0]:
         register_pascal_parts(
             name=cfg.DATASETS.TRAIN[0],
@@ -184,10 +184,10 @@ def setup(args):
             )
     else:
         raise ValueError("{} not supported.".format(dataset_name))
-
+    
     for dataset_name in cfg.DATASETS.TEST:
         if "part_imagenet" in dataset_name:
-            register_part_imagenet(name=dataset_name,
+            register_part_imagenet(name=dataset_name, 
                                    images_dirname=cfg.CUSTOM_DATASETS.PART_IMAGENET.IMAGES_DIRNAME,
                                    annotations_dirname=cfg.CUSTOM_DATASETS.PART_IMAGENET.ANNOTATIONS_DIRNAME,
                                    split=dataset_name.split('_')[-1],
@@ -204,7 +204,7 @@ def setup(args):
                                                   and (not cfg.SUPERVISED_MODEL.CLASS_AGNOSTIC_INFERENCE),
                                      debug=cfg.CUSTOM_DATASETS.CITYSCAPES_PART.DEBUG,
                                     )
-
+            
         elif "pascal" in dataset_name:
             register_pascal_parts(
                 name=dataset_name,
@@ -226,7 +226,7 @@ def setup(args):
 def main(args):
     cfg = setup(args)
     if comm.is_main_process() and not cfg.WANDB.DISABLE_WANDB:
-        run_name = cfg.WANDB.RUN_NAME
+        run_name = cfg.WANDB.RUN_NAME 
         if not os.path.exists(cfg.VIS_OUTPUT_DIR):
             os.makedirs(cfg.VIS_OUTPUT_DIR)
         wandb.init(project=cfg.WANDB.PROJECT, sync_tensorboard=True, name=run_name,
@@ -249,7 +249,7 @@ def main(args):
     res = trainer.train()
     if comm.is_main_process() and not cfg.WANDB.DISABLE_WANDB:
         wandb.finish()
-    return res
+    return res 
 
 
 if __name__ == "__main__":

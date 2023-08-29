@@ -1,8 +1,4 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
+# Copyright (c) Facebook, Inc. and its affiliates.
 # Modified by Bowen Cheng from https://github.com/facebookresearch/detr/blob/master/models/matcher.py
 """
 Modules to compute the matching cost and solve the corresponding LSAP.
@@ -95,7 +91,7 @@ class HungarianMatcher(nn.Module):
 
         assert cost_class != 0 or cost_mask != 0 or cost_dice != 0, "all costs cant be 0"
 
-
+        
 
     @torch.no_grad()
     def memory_efficient_forward(self, outputs, targets):
@@ -103,7 +99,7 @@ class HungarianMatcher(nn.Module):
         bs, num_queries = outputs["pred_logits"].shape[:2]
 
         indices = []
-
+        
         # Iterate through batch size
         for b in range(bs):
             if outputs["pred_logits"][b].shape[-1] == 1:
@@ -149,7 +145,7 @@ class HungarianMatcher(nn.Module):
                 # Compute the dice loss betwen masks
                 # cost_dice = batch_dice_loss_jit(out_mask, tgt_mask)
                 cost_dice = batch_dice_loss(out_mask, tgt_mask)
-
+            
             # Final cost matrix
             C = (
                 self.cost_mask * cost_mask
@@ -157,9 +153,9 @@ class HungarianMatcher(nn.Module):
                 + self.cost_dice * cost_dice
             )
             C = C.reshape(num_queries, -1).cpu()
-
-            row, col = linear_sum_assignment(C)
-            sorted_idx = C[row, col].topk(len(row), largest=False)[1]
+            
+            row, col = linear_sum_assignment(C) 
+            sorted_idx = C[row, col].topk(len(row), largest=False)[1] 
             indices.append((row[sorted_idx], col[sorted_idx]))
 
         return [

@@ -1,8 +1,4 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
+# Copyright (c) Facebook, Inc. and its affiliates.
 import logging
 from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
@@ -48,7 +44,7 @@ class MaskFormerHead(nn.Module):
         #             "Please upgrade your models. Applying automatic conversion now ..."
         #         )
         for k in list(state_dict.keys()):
-            newk = k
+            newk = k 
             if "sem_seg_head.pixel_decoder.pixel_decoder" in k:
                 newk = k.replace("sem_seg_head.pixel_decoder.pixel_decoder", "sem_seg_head.pixel_decoder")
                 state_dict[newk] = state_dict[k]

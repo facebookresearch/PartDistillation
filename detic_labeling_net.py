@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 import warnings
 warnings.filterwarnings('ignore', category=UserWarning)
 try:
@@ -21,7 +22,7 @@ import detectron2.utils.comm as comm
 from collections import OrderedDict
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
-from detectron2.data import (MetadataCatalog,
+from detectron2.data import (MetadataCatalog, 
                              build_detection_test_loader)
 
 from detectron2.engine import default_argument_parser, default_setup, launch
@@ -57,39 +58,45 @@ def get_clip_embeddings(vocabulary, prompt='a '):
 
 
 
-def prepare_model(model, dataset_name, debug):
+def prepare_model(model, dataset_name, labeling_mode, score_thres, debug):
     logger.info("preparing model for {}.".format(dataset_name))
     metadata = MetadataCatalog.get(dataset_name)
-    maybe_dp(model).register_metadata(metadata, debug)
+    maybe_dp(model).register_metadata(metadata, labeling_mode, score_thres, debug)
 
     # Setup clip classifier with class names.
-    classifier = get_clip_embeddings(metadata.classes)
-    num_classes = len(metadata.classes)
+    if labeling_mode == 'human-only':
+        metadata.class_names = ["person", "man", "woman", "toddler", "human"] 
+    else:
+        metadata.class_names = metadata.classes
+    classifier = get_clip_embeddings(metadata.class_names)
+    num_classes = len(metadata.class_names)
     reset_cls_test(model, classifier, num_classes)
 
     return model
 
 
 
-
 def do_label(cfg, model):
     results = OrderedDict()
     for d, dataset_name in enumerate(cfg.DATASETS.TEST):
-        model  = prepare_model(model, dataset_name, cfg.PROPOSAL_GENERATION.DEBUG)
+        label_mode = cfg.PROPOSAL_GENERATION.DETIC_LABELING_MODE
+        score_thres = cfg.PROPOSAL_GENERATION.SAVE_SCORE_THRESHOLD
+        model  = prepare_model(model, dataset_name, label_mode, score_thres, 
+                               cfg.PROPOSAL_GENERATION.DEBUG)
         mapper = ProposalGenerationMapper(cfg)
-        data_loader = build_detection_test_loader(cfg, dataset_name,
-                                                  batch_size=cfg.PROPOSAL_GENERATION.BATCH_SIZE,
+        data_loader = build_detection_test_loader(cfg, dataset_name, 
+                                                  batch_size=cfg.PROPOSAL_GENERATION.BATCH_SIZE, 
                                                   mapper=mapper)
         evaluator = NullEvaluator()
         results[dataset_name] = inference_on_dataset(model, data_loader, evaluator)
-
+        
         if comm.is_main_process():
             logger.info("Evaluation results for {} in csv format:".format(
                 dataset_name))
             print_csv_format(results[dataset_name])
     if len(results) == 1:
         results = list(results.values())[0]
-
+    
     return results
 
 
@@ -110,10 +117,12 @@ def setup(args):
         logger.info('OUTPUT_DIR: {}'.format(cfg.OUTPUT_DIR))
     cfg.freeze()
     default_setup(cfg, args)
-    setup_logger(output=cfg.OUTPUT_DIR, distributed_rank=comm.get_rank(), name="detic")
+    setup_logger(output=cfg.OUTPUT_DIR, distributed_rank=comm.get_rank(), name="part_distillation")
 
     dataset_name_dir = cfg.PROPOSAL_GENERATION.DATASET_NAME if not cfg.PROPOSAL_GENERATION.DEBUG else "debug"
-    save_path = f"pseudo_labels/object_labels/detic_predictions/{dataset_name_dir}/"
+    detic_labeling_mode = cfg.PROPOSAL_GENERATION.DETIC_LABELING_MODE
+    root_folder_name = cfg.PROPOSAL_GENERATION.ROOT_FOLDER_NAME
+    save_path = f"{root_folder_name}/object_labels/detic_predictions/{detic_labeling_mode}/{dataset_name_dir}/"
     # register dataset
     register_imagenet(
         cfg.PROPOSAL_GENERATION.DATASET_NAME,
@@ -135,7 +144,7 @@ def setup(args):
     if comm.is_main_process():
         if not os.path.exists(save_path):
             os.makedirs(save_path)
-
+        
         for fname in metadata.class_codes:
             folder_path = os.path.join(save_path, fname)
             if not os.path.exists(folder_path):

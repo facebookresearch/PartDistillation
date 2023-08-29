@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 import warnings
 warnings.filterwarnings('ignore', category=UserWarning)
 try:
@@ -12,14 +13,17 @@ try:
 except:
     pass
 
+import urllib3
+warnings.simplefilter('ignore', urllib3.exceptions.SubjectAltNameWarning)
+warnings.filterwarnings('ignore', category=FutureWarning)
 import copy
 import itertools
 import logging
 import os
-import sys
+import sys 
 import torch
 import detectron2.utils.comm as comm
-import wandb
+import wandb 
 
 sys.path.append('Detic/third_party/CenterNet2')
 sys.path.append('Detic/third_party/Deformable-DETR')
@@ -31,9 +35,9 @@ from pathlib import Path
 
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
-from detectron2.data import (MetadataCatalog,
+from detectron2.data import (MetadataCatalog, 
                              build_detection_test_loader)
-
+                             
 from detectron2.engine import (DefaultTrainer,
                                default_argument_parser,
                                default_setup,
@@ -47,8 +51,7 @@ from part_distillation import add_maskformer2_config, add_proposal_generation_co
 from part_distillation.data.dataset_mappers.proposal_generation_mapper import ProposalGenerationMapper
 from part_distillation.evaluation.null_evaluator import NullEvaluator
 from part_distillation.data.datasets.register_imagenet import register_imagenet
-
-
+ 
 class Trainer(DefaultTrainer):
     @classmethod
     def build_evaluator(self, *args, **kwargs):
@@ -58,11 +61,11 @@ class Trainer(DefaultTrainer):
     @classmethod
     def build_test_loader(self, cfg, dataset_name):
         mapper = ProposalGenerationMapper(cfg)
-        return build_detection_test_loader(cfg, dataset_name,
-                                           batch_size=cfg.PROPOSAL_GENERATION.BATCH_SIZE,
+        return build_detection_test_loader(cfg, dataset_name, 
+                                           batch_size=cfg.PROPOSAL_GENERATION.BATCH_SIZE, 
                                            mapper=mapper)
 
-
+ 
     @classmethod
     def test(self, cfg, model, evaluators=None):
         results = super().test(cfg, model, evaluators)
@@ -70,7 +73,7 @@ class Trainer(DefaultTrainer):
         if comm.is_main_process() and not cfg.WANDB.DISABLE_WANDB:
             wandb.log(results)
         return results
-
+        
 
 def setup(args):
     """
@@ -87,17 +90,22 @@ def setup(args):
     cfg.freeze()
     default_setup(cfg, args)
 
-    # Setup logger
+    # Setup logger 
     setup_logger(output=cfg.OUTPUT_DIR, distributed_rank=comm.get_rank(), name="part_distillation")
     dataset_name_dir = cfg.PROPOSAL_GENERATION.DATASET_NAME if not cfg.PROPOSAL_GENERATION.DEBUG else "debug"
-    save_path = "pseudo_labels/part_labels/proposal_generation/{}/{}/{}/{}_{}_norm_{}/"\
-                .format(dataset_name_dir,
-                cfg.PROPOSAL_GENERATION.OBJECT_MASK_TYPE,
+    detic_labeling_mode = cfg.PROPOSAL_GENERATION.DETIC_LABELING_MODE
+    root_folder_name = cfg.PROPOSAL_GENERATION.ROOT_FOLDER_NAME
+    save_path = "{}/part_labels/proposal_generation/{}/{}/{}/{}/{}_{}_norm_{}/"\
+                .format(
+                root_folder_name,
+                detic_labeling_mode,
+                dataset_name_dir, 
+                cfg.PROPOSAL_GENERATION.OBJECT_MASK_TYPE, 
                 "_".join(cfg.PROPOSAL_GENERATION.BACKBONE_FEATURE_KEY_LIST),
-                cfg.PROPOSAL_GENERATION.DISTANCE_METRIC,
+                cfg.PROPOSAL_GENERATION.DISTANCE_METRIC, 
                 cfg.PROPOSAL_GENERATION.NUM_SUPERPIXEL_CLUSTERS,
                 cfg.PROPOSAL_GENERATION.FEATURE_NORMALIZE)
-
+    
     # register dataset
     register_imagenet(
         cfg.PROPOSAL_GENERATION.DATASET_NAME,

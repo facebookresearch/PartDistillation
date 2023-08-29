@@ -3,10 +3,11 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from . import data
+
+from . import data  
 from . import modeling
-from .config import (add_maskformer2_config, add_proposal_learning_config, add_wandb_config,
-                     add_custom_datasets_config, add_proposal_generation_config, add_part_ranking_config,
+from .config import (add_maskformer2_config, add_proposal_learning_config, add_wandb_config, 
+                     add_custom_datasets_config, add_proposal_generation_config, add_part_ranking_config, 
                      add_part_distillation_config, add_pixel_grouping_confing, add_supervised_model_config,
                      add_fewshot_learning_config)
 from .proposal_model import ProposalModel

@@ -1,0 +1,40 @@
+_BASE_: mask2former/coco/instance-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_100ep.yaml
+DATASETS:
+  TRAIN: ("part_imagenet_train",)
+  TEST: ("pascal_part_valtest",)
+MODEL:
+  SWIN:
+    USE_CHECKPOINT: True 
+  WEIGHTS: "weights/mask2former/instance/swinL_i21k_q200_e100.pkl"
+  META_ARCHITECTURE: "SupervisedModel"
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 50
+SUPERVISED_MODEL:
+  USE_PER_PIXEL_LABEL: True 
+  APPLY_MASKING_WITH_OBJECT_MASK: True 
+  CLASS_AGNOSTIC_LEARNING: False 
+  CLASS_AGNOSTIC_INFERENCE: False 
+INPUT:
+  MIN_SIZE_TRAIN: (640,)
+  MAX_SIZE_TRAIN: 640
+  IMAGE_SIZE: 640
+  MASK_FORMAT: "bitmask"
+  SIZE_DIVISIBILITY: 16
+CUSTOM_DATASETS:
+  USE_MERGED_GT: True 
+  AUG_NAME_LIST: ["crop","scale","flip"]
+  BASE_SIZE: 640 
+TEST:
+  EVAL_PERIOD: 10000
+  DETECTIONS_PER_IMAGE: 200
+SOLVER:
+  IMS_PER_BATCH: 32
+  AMP:
+    ENABLED: True 
+FP16: True
+USE_CHECKPOINT: True 
+WANDB:
+  PROJECT: "supervised_learning"
+  VIS_PERIOD_TRAIN: 2000 
+  VIS_PERIOD_TEST: 100 
+  DISABLE_WANDB: True # set it to False for W&B visualization. 

@@ -1,0 +1,57 @@
+_BASE_: mask2former/coco/instance-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_100ep.yaml
+DATASETS:
+  TRAIN: ("imagenet_1k_train",)
+  TEST: ("part_imagenet_match_val","part_imagenet_evaluate_val",)
+MODEL:
+  SWIN:
+    USE_CHECKPOINT: True 
+  WEIGHTS: "weights/PartProposalLearning/IN1K+Human/part_proposal_model.pth"
+  META_ARCHITECTURE: "PartDistillationModel"
+  MASK_FORMER:
+    TRANSFORMER_DECODER_NAME: "PartDistillationTransformerDecoder"
+    FREEZE_KEYS: ["backbone","encoder"]
+    IMPORTANCE_SAMPLE_RATIO: 3.0 
+    OVERSAMPLE_RATIO: 0.0
+    QUERY_FEATURE_NORMALIZE: True # normalize part-level feature (query feature)
+PART_DISTILLATION:
+  MIN_OBJECT_AREA_RATIO: 0.001
+  MIN_AREA_RATIO: 0.001
+  MIN_SCORE: 0.0 
+  DATASET_PATH_LIST: ("pseudo_labels/part_labels/part_masks_with_class/imagenet_1k_train/lr_0.00001_scale_0.1_2.0_sampling_ratio_0.0/dot_8/r1_0.0_s1_0.7_r2_0.0_s2_0.0/",)
+  DATASET_PATH: "pseudo_labels/part_labels/part_masks_with_class/imagenet_1k_train/lr_0.00001_scale_0.1_2.0_sampling_ratio_0.0/dot_8/r1_0.0_s1_0.7_r2_0.0_s2_0.0/" 
+  USE_PER_PIXEL_LABEL: True 
+  SET_IMAGE_SQUARE: True 
+  APPLY_MASKING_WITH_OBJECT_MASK: True 
+  PATH_ONLY: True 
+  NUM_OBJECT_CLASSES: 1000 # imagenet-1k
+  NUM_PART_CLASSES: 8      # per-object-class num classes
+  DEBUG: False 
+CUSTOM_DATASETS:
+  USE_MERGED_GT: True 
+  AUG_NAME_LIST: ["crop","scale","flip"]
+  BASE_SIZE: 640 
+INPUT:
+  MIN_SIZE_TRAIN: (640,)
+  MIN_SIZE_TEST: 640
+  IMAGE_SIZE: 640
+  MASK_FORMAT: "bitmask"
+  SIZE_DIVISIBILITY: 16
+TEST:
+  EVAL_PERIOD: 10000
+  DETECTIONS_PER_IMAGE: 200
+SOLVER:
+  BASE_LR: 0.00001
+  IMS_PER_BATCH: 32
+  MAX_ITER: 90000
+  STEPS: (75000, 85000)
+  AMP:
+    ENABLED: True 
+WANDB:
+  PROJECT: "PartDistillationTrain"
+  VIS_PERIOD_TRAIN: 2000 
+  VIS_PERIOD_TEST: 100 
+  DISABLE_WANDB: True # set it to False for W&B visualization. 
+FP16: True 
+USE_CHECKPOINT: True 
+OUTPUT_DIR: "output/PartDistillation/IN1K+Human/"
+VIS_OUTPUT_DIR: "vis_logs/PartDistillation/IN1K+Human/"

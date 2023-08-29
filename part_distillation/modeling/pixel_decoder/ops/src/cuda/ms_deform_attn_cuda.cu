@@ -1,17 +1,16 @@
 /*!
-------------------------------------------------------------------------------------------------
-Deformable DETR
-Copyright (c) 2020 SenseTime. All Rights Reserved.
-Licensed under the Apache License, Version 2.0 [see LICENSE for details]
-------------------------------------------------------------------------------------------------
-Modified from https://github.com/chengdazhi/Deformable-Convolution-V2-PyTorch/tree/pytorch_1.0.0
-------------------------------------------------------------------------------------------------
+**************************************************************************************************
+* Deformable DETR
+* Copyright (c) 2020 SenseTime. All Rights Reserved.
+* Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+**************************************************************************************************
+* Modified from https://github.com/chengdazhi/Deformable-Convolution-V2-PyTorch/tree/pytorch_1.0.0
+**************************************************************************************************
+*/
 
-Copyright (c) Meta Platforms, Inc. and affiliates.
-
-This source code is licensed under the MIT license found in the
-LICENSE file in the root directory of this source tree.
-Modified from https://github.com/fundamentalvision/Deformable-DETR
+/*!
+* Copyright (c) Facebook, Inc. and its affiliates.
+* Modified by Bowen Cheng from https://github.com/fundamentalvision/Deformable-DETR
 */
 
 #include <vector>
@@ -24,7 +23,7 @@ Modified from https://github.com/fundamentalvision/Deformable-DETR
 
 
 at::Tensor ms_deform_attn_cuda_forward(
-    const at::Tensor &value,
+    const at::Tensor &value, 
     const at::Tensor &spatial_shapes,
     const at::Tensor &level_start_index,
     const at::Tensor &sampling_loc,
@@ -56,7 +55,7 @@ at::Tensor ms_deform_attn_cuda_forward(
     const int im2col_step_ = std::min(batch, im2col_step);
 
     AT_ASSERTM(batch % im2col_step_ == 0, "batch(%d) must divide im2col_step(%d)", batch, im2col_step_);
-
+    
     auto output = at::zeros({batch, num_query, num_heads, channels}, value.options());
 
     const int batch_n = im2col_step_;
@@ -87,7 +86,7 @@ at::Tensor ms_deform_attn_cuda_forward(
 
 
 std::vector<at::Tensor> ms_deform_attn_cuda_backward(
-    const at::Tensor &value,
+    const at::Tensor &value, 
     const at::Tensor &spatial_shapes,
     const at::Tensor &level_start_index,
     const at::Tensor &sampling_loc,
@@ -133,7 +132,7 @@ std::vector<at::Tensor> ms_deform_attn_cuda_backward(
     auto per_sample_loc_size = num_query * num_heads * num_levels * num_point * 2;
     auto per_attn_weight_size = num_query * num_heads * num_levels * num_point;
     auto grad_output_n = grad_output.view({batch/im2col_step_, batch_n, num_query, num_heads, channels});
-
+    
     for (int n = 0; n < batch/im2col_step_; ++n)
     {
         auto grad_output_g = grad_output_n.select(0, n);

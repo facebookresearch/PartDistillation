@@ -1,23 +1,28 @@
 _BASE_: ../mask2former/coco/instance-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_100ep.yaml
 DATASETS:
-  TRAIN: ("imagenet_22k_train",)
-  TEST: ("imagenet_22k_train",)
+  TRAIN: ("imagenet_1k_train",)
+  TEST: ("part_imagenet_valtest",)
 MODEL:
   SWIN:
     USE_CHECKPOINT: False 
   WEIGHTS: "weights/m2f/instance/swinL_i21k_q200_e100.pkl"
-  META_ARCHITECTURE: "ProposalGenerationModel"
+  META_ARCHITECTURE: "PixelGroupingModel"
+PIXEL_GROUPING:
+  NUM_SUPERPIXEL_CLUSTERS: 4 
+  DISTANCE_METRIC: "dot"
+  BACKBONE_FEATURE_KEY_LIST: ["res3","res4"]
+CUSTOM_DATASETS:
+  USE_MERGED_GT: True 
 INPUT:
   MIN_SIZE_TRAIN: (640,)
-  MAX_SIZE_TRAIN: 640
+  MIN_SIZE_TEST: 640
   IMAGE_SIZE: 640
   MASK_FORMAT: "bitmask"
+  SIZE_DIVISIBILITY: 16
 TEST:
-  EVAL_PERIOD: 1000
+  EVAL_PERIOD: 5000
   DETECTIONS_PER_IMAGE: 200
 SOLVER:
   IMS_PER_BATCH: 32
-PROPOSAL_GENERATION:
-  DATASET_NAME: "imagenet_1k_train"
 WANDB:
-  PROJECT: "proposal_generation"
+  PROJECT: "PixelGrouping"
