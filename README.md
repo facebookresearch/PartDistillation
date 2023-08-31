@@ -47,7 +47,7 @@ Need to smooth out with postprocessing. We postprocess all part segments with de
 ```
 ./sh_files/dcrf/run.sh 
 ``` 
-*NOTE: change the number of processes in the submit files to accomodate the resource availability.*
+*NOTE: change the number of processes in the submit files to accommodate the resource availability.*
 
 
 Then, we start training part proposal model (1st stage), which is a class-agnostic part segmentation model based on Mask2Former. 
