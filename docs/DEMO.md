@@ -1,6 +1,6 @@
 # PartDistillation DEMO 
 
-Here we provide DEMO for PartDistillation. We use the default [demo interface](https://github.com/facebookresearch/detectron2/blob/main/GETTING_STARTED.md) from detectron2. Please follow [here](WEIGHTS.md) to setup [Detic](https://github.com/facebookresearch/Detic/tree/main), and also download our pre-trained weight [here]()
+Here we provide DEMO for PartDistillation. We use the default [demo interface](https://github.com/facebookresearch/detectron2/blob/main/GETTING_STARTED.md) from detectron2. Please follow [here](WEIGHTS.md) to setup [Detic](https://github.com/facebookresearch/Detic/tree/main), and also download our pre-trained weight [here](https://utexas.box.com/shared/static/ovqrzxm9jwe66l0zjqyofkowk5zvhex1.pth). Please save the weight under `./weights/PartProposalLearning/IN1K+Human/part_proposal_model.pth` (see [here](https://github.com/janghyuncho/PartDistillation/blob/9560d4fd2a79d456c88dd1239b7f9cdc7f5c58d4/part_distillation_demo.py#L114C1-L114C1)).
 
 With an image of a `person` and a `bicycle`: 
 
@@ -49,7 +49,7 @@ python part_segment_demo.py --input figs/input/cat_and_cola.jpg --output figs/ou
 Above command reads `cat.jpg` image as input, and use [Detic](https://github.com/facebookresearch/Detic/tree/main) to first segment instance of the prompted class (`--custom_vocabulary`, `"cat"` in this case). Then it uses the pre-trained features specified with `--weight-name` to cluster the features to group pixels. 
 - `--k` is used for the number of clusters.
 - `--dcrf` is used for applying [dense-CRF](https://github.com/lucasb-eyer/pydensecrf) as post-processing. 
-- See [here](https://github.com/facebookresearch/PartDistillation/part_segment_demo.py#L34) to find the available `weight-name` options. Please download the weights from Mask2Former ([here](https://github.com/facebookresearch/Mask2Former/blob/main/MODEL_ZOO.md)) and place them under `./weights/...` (see [here](./WEIGHTS.md)). 
+- See [here](https://github.com/janghyuncho/PartDistillation/blob/main/part_segment_demo.py#L38) to find the available `weight-name` options. Please download the weights from Mask2Former ([here](https://github.com/facebookresearch/Mask2Former/blob/main/MODEL_ZOO.md)) and place them under `./weights/...` (see [here](./WEIGHTS.md)). 
 
 If setup correctly, the result should look like below:
 
