@@ -3,14 +3,15 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 import copy
 import logging
-import os
+import os 
 import numpy as np
 import torch
 import pycocotools.mask as mask_util
 
-from PIL import Image
+from PIL import Image 
 from typing import Any, Dict, List, Set, Tuple
 from detectron2.config import configurable
 from detectron2.data import detection_utils as utils
@@ -39,11 +40,11 @@ OBJECT_CLASSES = ('person', 'rider', 'car', 'truck', 'bus')
 
 def load_object_and_parts(dict, file_path):
     """
-    Object classes: 24, 25, 26, 27, 28 (5 classes).
-        - Object class starts from 24 and ends with 28.
-    Part classes:  15 + 8 = 23.
-        - Part label starts from 1, and ends with either 4 or 5.
-        - -1 is ignore, and 0 is unlabeled/void.
+    Object classes: 24, 25, 26, 27, 28 (5 classes). 
+        - Object class starts from 24 and ends with 28. 
+    Part classes:  15 + 8 = 23. 
+        - Part label starts from 1, and ends with either 4 or 5. 
+        - -1 is ignore, and 0 is unlabeled/void. 
     """
     instances = utils.annotations_to_instances(dict["annotations"], (dict["height"], dict["width"]), mask_format="bitmask")
     if hasattr(instances, "gt_masks"):
@@ -53,9 +54,9 @@ def load_object_and_parts(dict, file_path):
 
         img = np.array(Image.open(file_path))
         sids, iids, pids = pp.decode_uids(img)
-
+        
         object_instances = []
-        part_instances = []
+        part_instances = [] 
         for instance_id, object_category_id in enumerate(obj_classes):
             object_category_id = object_category_id.item()
             object_dict = {"object_category": OBJECT_CLASSES[object_category_id],
@@ -70,10 +71,10 @@ def load_object_and_parts(dict, file_path):
             part_instances_per_object = []
             for _pid in np.unique(part_map):
                 # ignore -1 and 0.
-                if _pid > 0:
+                if _pid > 0: 
                     part_id = PART_BASE_ID[object_category_id] + _pid-1
                     part_dict = {"part_category": PART_CLASSES[part_id],
-                                "part_category_id": part_id, # shifting to make it 0 start.
+                                "part_category_id": part_id, # shifting to make it 0 start. 
                                 "category_id": part_id, # For histogram printing.
                                 "object_index": instance_id,
                                 "segmentation": mask_util.encode(np.asfortranarray(np.where(part_map==_pid, True, False))),
@@ -81,7 +82,7 @@ def load_object_and_parts(dict, file_path):
                     part_instances_per_object.append(part_dict)
             object_instances.append(object_dict)
             part_instances.append(part_instances_per_object)
-
+        
         return object_instances, part_instances
     else:
         return None, None
@@ -100,7 +101,7 @@ class CityscapesPartMapper:
         aug_without_crop,
         image_format,
         size_divisibility,
-        instance_mask_format: str = "bitmask",
+        instance_mask_format: str = "bitmask", 
         use_merged_gt: bool=False,
     ):
         """
@@ -118,7 +119,7 @@ class CityscapesPartMapper:
         self.instance_mask_format = instance_mask_format
         self.num_repeats = 20  # number of repeats until give up.
         self.use_merged_gt = use_merged_gt
-
+    
     @classmethod
     def from_config(cls, cfg, is_train=True):
         # Build augmentation
@@ -177,17 +178,17 @@ class CityscapesPartMapper:
         try:
             self._transform_part_annotations(dataset_dict, transforms, image_shape)
         except:
-            return None
+            return None 
         # Pytorch's dataloader is efficient on torch.Tensor due to shared-memory,
         # but not efficient on large generic data structures due to the use of pickle & mp.Queue.
         # Therefore it's important to use torch.Tensor.
         dataset_dict["image"] = torch.as_tensor(np.ascontiguousarray(image.transpose(2, 0, 1)))
-
+        
         del dataset_dict["annotations"]
         del dataset_dict["part_annotations"]
 
         return dataset_dict
-
+        
 
 
     def __call__(self, _dataset_dict):
@@ -203,12 +204,12 @@ class CityscapesPartMapper:
 
             object_instances, part_instances = load_object_and_parts(dict, part_file)
             if object_instances is not None:
-                dict["annotations"] = object_instances
+                dict["annotations"] = object_instances 
                 dict["part_annotations"] = part_instances
 
-                _dataset_dict = dict
+                _dataset_dict = dict 
             else:
-                return None
+                return None 
 
         if self.is_train:
             for _ in range(self.num_repeats):
@@ -216,24 +217,24 @@ class CityscapesPartMapper:
                 if dataset_dict is not None \
                 and "part_instances" in dataset_dict \
                 and dataset_dict["part_instances"].has("gt_masks") \
-                and len(dataset_dict["part_instances"]) > 0:
-                    return dataset_dict
+                and len(dataset_dict["part_instances"]) > 0:  
+                    return dataset_dict 
 
             return self._forward_with_aug(_dataset_dict, self.aug_without_crop)
         else:
             return self._forward_with_aug(_dataset_dict, self.aug)
 
 
-    def _transform_annotations(self,
-                               dataset_dict: Dict[str, Any],
-                               transforms: Any,
+    def _transform_annotations(self, 
+                               dataset_dict: Dict[str, Any], 
+                               transforms: Any, 
                                image_shape: Tuple):
         annos = [
             utils.transform_instance_annotations(obj, transforms, image_shape, keypoint_hflip_indices=False)
                     for obj in dataset_dict["annotations"]
                     if obj.get("iscrowd", 0) == 0
             ]
-        instances = utils.annotations_to_instances(annos, image_shape,
+        instances = utils.annotations_to_instances(annos, image_shape, 
                                     mask_format=self.instance_mask_format)
         obj_mapping = [obj_id for obj_id, obj in enumerate(dataset_dict["annotations"])]
         instances.obj_mapping = torch.tensor(obj_mapping, dtype=torch.int64)
@@ -241,9 +242,9 @@ class CityscapesPartMapper:
         dataset_dict["instances"] = utils.filter_empty_instances(instances, by_box=False)
 
 
-    def _transform_part_annotations(self,
-                                    dataset_dict: Dict[str, Any],
-                                    transforms: Any,
+    def _transform_part_annotations(self, 
+                                    dataset_dict: Dict[str, Any], 
+                                    transforms: Any, 
                                     image_shape: Tuple):
         parts_list = [
             part_ann
@@ -258,8 +259,8 @@ class CityscapesPartMapper:
         for part_per_obj in parts_list:
             for part in part_per_obj:
                 part["bbox"] = [0, 0, image_shape[0], image_shape[1]]
-                part["bbox_mode"] = BoxMode.XYXY_ABS
-
+                part["bbox_mode"] = BoxMode.XYXY_ABS 
+    
         # The list of lists of parts will be flattened below, get mapping between a
         # part in the flat list and the object it corresponds to.
         obj_mapping = [obj_id for obj_id, obj in enumerate(parts_list) for _ in obj]
@@ -287,7 +288,7 @@ class CityscapesPartMapper:
             [i for i, _ in enumerate(flat_part_segs)], dtype=torch.int64
         )
         instances = utils.filter_empty_instances(instances, by_box=False)
-
+        
         # save original part masks for evaluation
         dataset_dict["orig_part_maps"] = [
             parts

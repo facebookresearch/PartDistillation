@@ -3,10 +3,11 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 from pycocotools import mask as mask_util
 from detectron2.utils.visualizer import ColorMode, Visualizer, GenericMask, _create_text_labels
-import numpy as np
-import torch
+import numpy as np  
+import torch 
 import pydensecrf.densecrf as dcrf
 import pydensecrf.utils as dcrf_utils
 
@@ -29,7 +30,7 @@ def proposals_to_coco_json(binary_mask):
         # the pycocotools/_mask.pyx does).
         rle["counts"] = rle["counts"].decode("utf-8")
 
-    return [{"segmentation": rle} for rle in rles]
+    return [{"segmentation": rle} for rle in rles] 
 
 
 def get_iou_all_cocoapi(pr_masks, gt_masks):
@@ -54,21 +55,21 @@ def dense_crf(image, label, n_labels, p=0.7, t=5, sd1=3, sd2=5, sc=13, compat1=3
     c = image.shape[2]
     h = image.shape[0]
     w = image.shape[1]
-
+    
     d = dcrf.DenseCRF2D(w, h, n_labels)
     U = dcrf_utils.unary_from_labels(labels, n_labels, gt_prob=p, zero_unsure=False)
     d.setUnaryEnergy(U)
-
+    
     # This adds the color-independent term, features are the locations only.
     feats = dcrf_utils.create_pairwise_gaussian(sdims=(sd1, sd1), shape=(h, w))
     d.addPairwiseEnergy(feats, compat=compat1, kernel=dcrf.DIAG_KERNEL,
                           normalization=dcrf.NORMALIZE_SYMMETRIC)
 
     # This adds the color-dependent term, i.e. features are (x,y,r,g,b).
-    feats = dcrf_utils.create_pairwise_bilateral(sdims=(sd2, sd2), schan=(sc, sc, sc),
+    feats = dcrf_utils.create_pairwise_bilateral(sdims=(sd2, sd2), schan=(sc, sc, sc), 
                                                  img=image,
                                                  chdim=2)
-    d.addPairwiseEnergy(feats, compat=compat2,
+    d.addPairwiseEnergy(feats, compat=compat2, 
                            kernel=dcrf.DIAG_KERNEL,
                            normalization=dcrf.NORMALIZE_SYMMETRIC)
 
@@ -123,3 +124,5 @@ class Partvisualizer(Visualizer):
             alpha=alpha,
         )
         return self.output
+
+

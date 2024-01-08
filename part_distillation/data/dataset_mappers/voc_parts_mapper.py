@@ -3,9 +3,10 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 import copy
 import logging
-import os
+import os 
 import numpy as np
 import torch
 from typing import Tuple, Union, Any, List, Dict
@@ -29,7 +30,7 @@ class VOCPartsMapper:
         aug_without_crop,
         image_format,
         size_divisibility,
-        instance_mask_format: str = "bitmask",
+        instance_mask_format: str = "bitmask", 
         use_merged_gt: bool=False,
     ):
         self.is_train = is_train
@@ -40,7 +41,7 @@ class VOCPartsMapper:
         self.instance_mask_format = instance_mask_format
         self.num_repeats = 100  # number of repeats until give up.
         self.use_merged_gt = use_merged_gt
-
+    
     @classmethod
     def from_config(cls, cfg, is_train=True):
         augs_without_crop = []
@@ -80,6 +81,8 @@ class VOCPartsMapper:
         image = utils.read_image(dataset_dict["file_name"], format=self.img_format)
         utils.check_image_size(dataset_dict, image)
 
+        # print(len(dataset_dict['annotations']), flush=True)
+
         aug_input = T.AugInput(image)
         aug_input, transforms = T.apply_transform_gens(aug, aug_input)
         image = aug_input.image
@@ -96,9 +99,9 @@ class VOCPartsMapper:
         dataset_dict["image"] = torch.as_tensor(np.ascontiguousarray(image.transpose(2, 0, 1)))
         del dataset_dict["annotations"]
         del dataset_dict["part_annotations"]
-
+        
         return dataset_dict
-
+        
 
 
     def __call__(self, _dataset_dict):
@@ -113,24 +116,24 @@ class VOCPartsMapper:
             for _ in range(self.num_repeats):
                 dataset_dict = self._forward_with_aug(_dataset_dict, self.aug)
                 if dataset_dict["part_instances"].has("gt_masks") \
-                and dataset_dict["part_instances"].gt_masks.tensor.shape[0] > 1:
-                    return dataset_dict
+                and dataset_dict["part_instances"].gt_masks.tensor.shape[0] > 1:  
+                    return dataset_dict 
 
             return self._forward_with_aug(_dataset_dict, self.aug_without_crop)
         else:
             return self._forward_with_aug(_dataset_dict, self.aug)
 
 
-    def _transform_annotations(self,
-                               dataset_dict: Dict[str, Any],
-                               transforms: Any,
+    def _transform_annotations(self, 
+                               dataset_dict: Dict[str, Any], 
+                               transforms: Any, 
                                image_shape: Tuple):
         annos = [
             utils.transform_instance_annotations(obj, transforms, image_shape, keypoint_hflip_indices=False)
                     for obj in dataset_dict["annotations"]
                     if obj.get("iscrowd", 0) == 0
             ]
-        instances = utils.annotations_to_instances(annos, image_shape,
+        instances = utils.annotations_to_instances(annos, image_shape, 
                                     mask_format=self.instance_mask_format)
         obj_mapping = [obj_id for obj_id, obj in enumerate(dataset_dict["annotations"])]
         instances.obj_mapping = torch.tensor(obj_mapping, dtype=torch.int64)
@@ -138,9 +141,9 @@ class VOCPartsMapper:
         dataset_dict["instances"] = utils.filter_empty_instances(instances)
 
 
-    def _transform_part_annotations(self,
-                                    dataset_dict: Dict[str, Any],
-                                    transforms: Any,
+    def _transform_part_annotations(self, 
+                                    dataset_dict: Dict[str, Any], 
+                                    transforms: Any, 
                                     image_shape: Tuple):
         parts_list = [
             part_ann
@@ -174,7 +177,7 @@ class VOCPartsMapper:
             [i for i, _ in enumerate(flat_part_segs)], dtype=torch.int64
         )
         instances = utils.filter_empty_instances(instances)
-
+        
         # save original part masks for evaluation
         dataset_dict["orig_part_maps"] = [
             parts

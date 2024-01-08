@@ -1,0 +1,55 @@
+_BASE_: mask2former/coco/instance-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_100ep.yaml
+DATASETS:
+  TRAIN: ("imagenet_1k_train",)
+  TEST: ("imagenet_1k_pre_labeling_train","imagenet_1k_post_labeling_train",)
+MODEL:
+  SWIN:
+    USE_CHECKPOINT: False 
+  WEIGHTS: "weights/PartProposalLearning/IN1K+Human/part_proposal_model.pth"  
+  META_ARCHITECTURE: "PartRankingModel"
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 1
+PART_RANKING:
+  ROOT_FOLDER_NAME: "pseudo_labels"
+  WEIGHT_NAME: "proposal_model"
+  MIN_AREA_RATIO_1: 0.0  
+  MIN_SCORE_1: 0.7
+  MIN_AREA_RATIO_2: 0.0
+  MIN_SCORE_2: 0.0 
+  DATASET_PATH: "pseudo_labels/part_labels/processed_proposals/max-gt-label/imagenet_1k_train/detic/res3_res4/dot_4_norm_False/" 
+  DATASET_PATH_LIST: ("pseudo_labels/part_labels/processed_proposals/max-gt-label/imagenet_1k_train/detic/res3_res4/dot_4_norm_False/",)
+  USE_PER_PIXEL_LABEL_DURING_CLUSTERING: True 
+  USE_PER_PIXEL_LABEL_DURING_LABELING: True 
+  PROPOSAL_KEY: "decoder_output"
+  CLASSIFIER_METRIC: "dot"
+  NUM_CLUSTERS: 8 
+  APPLY_MASKING_WITH_OBJECT_MASK: True 
+  PROPOSAL_FEATURE_NORM: False 
+  PARTITION_INDEX: 0 
+  TOTAL_PARTITIONS: 0
+  SAVE_ANNOTATIONS: True 
+  DEBUG: False 
+CUSTOM_DATASETS:
+  USE_MERGED_GT: True 
+INPUT:
+  MIN_SIZE_TRAIN: (640,)
+  MAX_SIZE_TRAIN: 640
+  MIN_SIZE_TEST: 640
+  IMAGE_SIZE: 640
+  MASK_FORMAT: "bitmask"
+  SIZE_DIVISIBILITY: 16
+TEST:
+  EVAL_PERIOD: 5000
+  DETECTIONS_PER_IMAGE: 200
+SOLVER:
+  IMS_PER_BATCH: 32
+WANDB:
+  PROJECT: "part_ranking"
+  VIS_PERIOD_TRAIN: 200 
+  VIS_PERIOD_TEST: 200 
+  DISABLE_WANDB: True # set it to False for W&B visualization. 
+OUTPUT_DIR: "output/PartRanking/IN1K+Human"
+FP16: True 
+USE_CHECKPOINT: True 
+OUTPUT_DIR: "output/PartRanking/IN1K+Human/"
+VIS_OUTPUT_DIR: "vis_logs/PartRanking/IN1K+Human/"

@@ -3,14 +3,15 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 import os
 import itertools
-import copy
+import copy 
 import json
 import logging
 import numpy as np
 import torch
-import time
+import time 
 
 from collections import OrderedDict
 from typing import Dict, List
@@ -54,30 +55,30 @@ def _evaluate_box_proposals(proposals_list, gt_masks_list, area="all", limit=Non
 
     assert area in areas, "Unknown area range: {}".format(area)
     area_range = area_ranges[areas[area]]
-    gt_overlaps = []
-    num_pos = 0
+    gt_overlaps = [] 
+    num_pos = 0 
     time_for_iou = []
 
-    for (proposals_mask, proposals_score), gt_masks in zip(proposals_list, gt_masks_list):
+    for (proposals_mask, proposals_score), gt_masks in zip(proposals_list, gt_masks_list): 
         inds = proposals_score.sort(descending=True)[1]
 
         proposals = [proposals_mask[i] for i in inds]
 
         if len(proposals) == 0 or len(gt_masks) == 0:
-            continue
+            continue 
         gt_areas = gt_masks.float().flatten(1).sum(-1)
-        valid_gt_inds = (gt_areas > area_range[0]) & (gt_areas <= area_range[1])
+        valid_gt_inds = (gt_areas > area_range[0]) & (gt_areas <= area_range[1]) 
         gt_masks = gt_masks[valid_gt_inds]
 
         num_pos += len(gt_masks)
 
         if len(gt_masks) == 0:
-            continue
-
+            continue 
+        
         if limit is not None and len(proposals) > limit:
-            proposals = proposals[:limit]
-
-        t1 = time.time()
+            proposals = proposals[:limit] 
+        
+        t1 = time.time() 
         overlaps = pairwise_mask_iou_cocoapi(proposals, gt_masks)  # 20x faster.
         time_for_iou.append(time.time()-t1)
 
@@ -133,18 +134,18 @@ class ProposalEvaluator(DatasetEvaluator):
         limit: int=-1,
     ):
         """
-        This evaluator evaluates baseline methods.
+        This evaluator evaluates baseline methods. 
 
-        The evaluation is on AR metric.
+        The evaluation is on AR metric. 
 
-        This evaluator will handle subset_class evaluation as well.
+        This evaluator will handle subset_class evaluation as well. 
         """
         self._logger = logging.getLogger(__name__)
 
         self._distributed = distributed
         self._output_dir = output_dir
         self._cpu_device = torch.device("cpu")
-        self.areas = areas
+        self.areas = areas 
         self.limit = limit
 
     def reset(self):
@@ -181,15 +182,15 @@ class ProposalEvaluator(DatasetEvaluator):
             gts = list(itertools.chain(*gts))
 
             if not is_main_process():
-                return {}
+                return {} 
         else:
-            predictions = self._predictions
-            gts = self._gts
+            predictions = self._predictions 
+            gts = self._gts 
 
         if len(predictions) == 0:
             self._logger.warning("[ProposalEvaluator] Did not receive valid predictions.")
             return {}
-
+        
         self._results = OrderedDict()
         self._eval_proposals(predictions, gts)
 

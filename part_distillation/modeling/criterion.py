@@ -1,8 +1,4 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
+# Copyright (c) Facebook, Inc. and its affiliates.
 # Modified by Bowen Cheng from https://github.com/facebookresearch/detr/blob/master/models/detr.py
 """
 MaskFormer criterion.
@@ -130,6 +126,8 @@ class SetCriterion(nn.Module):
         assert "pred_logits" in outputs
         src_logits = outputs["pred_logits"].float()
 
+        # print(src_logits.shape, flush=True)
+
         idx = self._get_src_permutation_idx(indices)
         if idx is not None:
             target_classes_o = torch.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)])
@@ -137,13 +135,12 @@ class SetCriterion(nn.Module):
                 src_logits.shape[:2], self.num_classes, dtype=torch.int64, device=src_logits.device
             )
             target_classes[idx] = target_classes_o
-
             loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
             losses = {"loss_ce": loss_ce}
         else:
             losses = {"loss_ce": src_logits.sum()*0.0}
         return losses
-
+    
     def loss_masks(self, outputs, targets, indices, num_masks):
         """Compute the losses related to the masks: the focal loss and the dice loss.
         targets dicts must contain the key "masks" containing a tensor of dim [nb_target_boxes, h, w]
@@ -158,7 +155,7 @@ class SetCriterion(nn.Module):
             "loss_dice": outputs["pred_masks"].sum()*0.0,
             }
 
-            return losses
+            return losses 
 
         src_masks = outputs["pred_masks"]
         src_masks = src_masks[src_idx]
@@ -196,14 +193,12 @@ class SetCriterion(nn.Module):
         ).squeeze(1)
 
         losses = {
-            # "loss_mask": sigmoid_ce_loss_jit(point_logits, point_labels, num_masks),
-            # "loss_dice": dice_loss_jit(point_logits, point_labels, num_masks),
-            "loss_mask": sigmoid_ce_loss(point_logits, point_labels, num_masks),
-            "loss_dice": dice_loss(point_logits, point_labels, num_masks),
+            "loss_mask": sigmoid_ce_loss_jit(point_logits, point_labels, num_masks),
+            "loss_dice": dice_loss_jit(point_logits, point_labels, num_masks),
+            # "loss_mask": sigmoid_ce_loss(point_logits, point_labels, num_masks),
+            # "loss_dice": dice_loss(point_logits, point_labels, num_masks),
         }
 
-        del src_masks
-        del target_masks
         return losses
 
     def _get_src_permutation_idx(self, indices):

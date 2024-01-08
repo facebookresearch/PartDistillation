@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 import copy
 import itertools
 import logging
@@ -12,13 +13,13 @@ import detectron2.utils.comm as comm
 
 from detectron2.utils.comm import is_main_process, synchronize, all_gather
 from detectron2.evaluation import DatasetEvaluator
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans 
 
 
 class ClusteringModule(DatasetEvaluator):
-    def __init__(self,
-                 distributed=True,
-                 num_clusters=8,
+    def __init__(self, 
+                 distributed=True, 
+                 num_clusters=8, 
                  ):
         self._logger = logging.getLogger("part_distillation")
         self._distributed = distributed
@@ -48,12 +49,12 @@ class ClusteringModule(DatasetEvaluator):
 
             gt_labels = all_gather(self._class_labels_list)
             gt_labels = list(itertools.chain(*gt_labels))
-
+        
         proposal_features = torch.cat(proposal_features, dim=0)
         gt_labels = torch.cat(gt_labels, dim=0)
         gt_unique = gt_labels.unique().long().numpy()
 
-        # only run the main process since clustering is on cpu.
+        # only run the main process since clustering is on cpu. 
         cluster_centroids_dict = {}
         if comm.is_main_process():
             for cid in gt_unique:
@@ -62,12 +63,12 @@ class ClusteringModule(DatasetEvaluator):
                     cluster_centroids_dict[cid] = self._get_cluster_centroids(proposal_features_i, cid)
                 else:
                     cluster_centroids_dict[cid] = torch.randn(self.num_clusters, proposal_features_i.shape[1])
-
+        
         synchronize()
         cluster_centroids_dict = all_gather(cluster_centroids_dict)
         cluster_centroids_dict = cluster_centroids_dict[0] # 0 is the main process.
-
-        return copy.deepcopy(cluster_centroids_dict)
+        
+        return copy.deepcopy(cluster_centroids_dict) 
 
 
     def _get_cluster_centroids(self, proposal_features, cid):
@@ -77,5 +78,6 @@ class ClusteringModule(DatasetEvaluator):
 
         centroids = kmeans.cluster_centers_
         centroids = torch.tensor(centroids).float()
-
+ 
         return centroids
+

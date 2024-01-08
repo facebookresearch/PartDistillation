@@ -3,20 +3,21 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import os
+
+import os 
 import cv2
-import copy
-import argparse
-import numpy as np
-import torch
-import matplotlib.pyplot as plt
+import copy 
+import argparse 
+import numpy as np 
+import torch 
+import matplotlib.pyplot as plt 
 
 from detectron2.data.detection_utils import read_image
 from pycocotools import mask as coco_mask
 from detectron2.utils.visualizer import ColorMode, Visualizer, GenericMask
 from detectron2.structures import Instances
 from detectron2.data import transforms as T
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont 
 
 
 IMAGE_SIZE = 640
@@ -47,13 +48,13 @@ class Partvisualizer(Visualizer):
 def ann_to_instance_dict(data):
     masks = torch.tensor([coco_mask.decode(ann["segmentation"]) for ann in data["part_masks"]])
     label = data["part_labels"]
-
+    
     instance_dict = {}
     for msk, lbl in zip(masks, label):
         instance = Instances(masks.shape[1:])
         instance.pred_masks = msk[None]
         instance.pred_classes = lbl[None]
-
+        
         instance_dict[lbl.item()] = instance
     return instance_dict
 
@@ -84,14 +85,14 @@ def get_vis_image(data, instance, opacity=0.9):
     image = read_image(data["file_name"])
     image = T.apply_transform_gens(augs, image)[0]
     white = np.ones(image.shape) * 255
-    image = image * opacity + white * (1-opacity)
+    image = image * opacity + white * (1-opacity) 
     visualizer = Partvisualizer(image)
     vis_image = visualizer.draw_instance_predictions(predictions=instance).get_image()
     vis_image = Image.fromarray(vis_image)
-
+    
     return vis_image
 
-
+    
 augs = [T.ResizeScale(min_scale=1.0, max_scale=1.0, target_height=IMAGE_SIZE, target_width=IMAGE_SIZE),
         T.FixedSizeCrop(crop_size=(IMAGE_SIZE, IMAGE_SIZE))
         ]
@@ -138,8 +139,8 @@ if __name__ == "__main__":
         source_root = f"{args.pseudo_root_folder}/part_labels/part_masks_with_class/{args.dataset_name}/{args.mask_ranking_type}/{args.object_mask_type}/{args.model_name}/local_l2_4/masking_step_24/global_l2_{args.num_parts}/"
         target_root = f"visualization/{args.dataset_name}/{args.mask_ranking_type}/{args.object_mask_type}/{args.model_name}/local_l2_4/masking_step_24/global_l2_{args.num_parts}/"
         collage_root = f"collages/{args.dataset_name}/{args.mask_ranking_type}/{args.object_mask_type}/{args.model_name}/local_l2_4/masking_step_24/global_l2_{args.num_parts}/"
-
-    # For model predictions.
+    
+    # For model predictions. 
     if args.mode == "model_predictions":
         source_root = f"visualization/{args.dataset_name}/{args.model_name}/"
         target_root = f"visualization/{args.dataset_name}/overlayed_images/{args.model_name}/"
@@ -158,8 +159,8 @@ if __name__ == "__main__":
     if args.num_parallel_jobs > 0:
         num_total_classes = len(code_list)
         num_classes_per_job = num_total_classes // args.num_parallel_jobs
-        num_remaining_classes = num_total_classes - args.num_parallel_jobs * num_classes_per_job
-        num_current_job_classes = num_classes_per_job
+        num_remaining_classes = num_total_classes - args.num_parallel_jobs * num_classes_per_job 
+        num_current_job_classes = num_classes_per_job 
 
         start_i = num_current_job_classes * (args.parallel_job_id-1)
         end_i = num_current_job_classes * args.parallel_job_id
@@ -176,12 +177,12 @@ if __name__ == "__main__":
                 folder_name = code + "_" + fname_to_classname[code]
                 pname_list = os.listdir(os.path.join(target_root, folder_name))
                 for pname in pname_list:
-                    pathlist = []
+                    pathlist = [] 
                     count = 0
                     collage_id = 0
                     for fname in os.listdir(os.path.join(target_root, folder_name, pname)):
                         pathlist.append(os.path.join(target_root, folder_name, pname, fname))
-                        count += 1
+                        count += 1 
 
                         if count % args.collage_size**2 == 0:
                             collage = make_collage(args.collage_size, pathlist)
@@ -190,18 +191,18 @@ if __name__ == "__main__":
                             collage.save(os.path.join(collage_root, "collage_{}x{}".format(args.collage_size, args.collage_size), folder_name, pname, fname))
                             pathlist = []
                             collage_id += 1
-
+                            
                             if args.collage_limit > 0 and args.collage_limit < collage_id:
-                                break
+                                break 
                 if progress_count % 5 == 0:
-                    print('{:.2f} \% done.'.format(progress_count/len(code_list) * 100), flush=True)
+                    print('{:.2f} \% done.'.format(progress_count/len(code_list) * 100), flush=True)    
         else:
-            pathlist = []
+            pathlist = [] 
             count = 0
             collage_id = 0
             for fname in os.listdir("debug_vis"):
                 pathlist.append(os.path.join("debug_vis", fname))
-                count += 1
+                count += 1 
 
                 if count % args.collage_size**2 == 0:
                     collage = make_collage(args.collage_size, pathlist)
@@ -229,7 +230,7 @@ if __name__ == "__main__":
                 for part_id, instance in instance_dict.items():
                     if not args.debug and not os.path.exists(os.path.join(target_root, folder_name, "part_{}".format(part_id))):
                         os.makedirs(os.path.join(target_root, folder_name, "part_{}".format(part_id)))
-
+                    
                     if not os.path.exists(os.path.join(target_root, folder_name, "part_{}".format(part_id), fname)):
                         vis_image = get_vis_image(data, instance, 0.7)
                         debug_count += 1
@@ -243,5 +244,7 @@ if __name__ == "__main__":
                             # print("Saved.", os.path.join(target_root, folder_name, "part_{}".format(part_id), fname))
 
             if count % 10 == 0:
-                print('{:.2f} \% done.'.format(count/len(code_list) * 100), flush=True)
-    print("Done. ")
+                print('{:.2f} \% done.'.format(count/len(code_list) * 100), flush=True)  
+    print("Done. ")  
+
+

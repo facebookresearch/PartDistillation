@@ -5,7 +5,7 @@
 
 """
 Base trainer module largely borrowed from Mask2Former:
-https://github.com/facebookresearch/Mask2Former/blob/main/train_net.py
+https://github.com/facebookresearch/Mask2Former/blob/main/train_net.py 
 """
 
 try:
@@ -20,7 +20,7 @@ import copy
 import itertools
 from typing import Any, Dict, List, Set
 import torch
-import torch.nn as nn
+import torch.nn as nn 
 
 from detectron2.engine import DefaultTrainer
 from detectron2.projects.deeplab import build_lr_scheduler
@@ -39,17 +39,17 @@ def get_mode(dataset_name):
         mode = "eval"
     elif "save_labels" in dataset_name:
         mode = "save"
-    return mode
+    return mode 
 
 
 def maybe_dp(model):
     """
-    helper function to access model with data parallel or distributed data parallel.
+    helper function to access model with data parallel or distributed data parallel. 
     """
     if isinstance(model, DDP) or isinstance(model, nn.DataParallel):
-        return model.module
+        return model.module 
     else:
-        return model
+        return model 
 
 
 class BaseTrainer(DefaultTrainer):
@@ -93,11 +93,11 @@ class BaseTrainer(DefaultTrainer):
                 # Avoid duplicating parameters
                 if value in memo:
                     continue
-
-                # NOTE: Use keyword such as "backbone" to easily freeze parameters.
+                
+                # NOTE: Use keyword such as "backbone" to easily freeze parameters. 
                 if len([_ for _ in cfg.MODEL.MASK_FORMER.FREEZE_KEYS if _ in module_name]) > 0:
-                    value.requires_grad = False
-                    continue
+                    value.requires_grad = False 
+                    continue 
                 memo.add(value)
 
                 hyperparams = copy.copy(defaults)
@@ -114,7 +114,7 @@ class BaseTrainer(DefaultTrainer):
                 if isinstance(module, torch.nn.Embedding):
                     hyperparams["weight_decay"] = weight_decay_embed
                 params.append({"params": [value], **hyperparams})
-
+        
         def maybe_add_full_model_gradient_clipping(optim):
             # detectron2 doesn't have full model gradient clipping now
             clip_norm_val = cfg.SOLVER.CLIP_GRADIENTS.CLIP_VALUE
@@ -146,3 +146,4 @@ class BaseTrainer(DefaultTrainer):
         if not cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE == "full_model":
             optimizer = maybe_add_gradient_clipping(cfg, optimizer)
         return optimizer
+

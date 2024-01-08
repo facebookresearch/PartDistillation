@@ -1,0 +1,55 @@
+_BASE_: mask2former/coco/instance-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_100ep.yaml
+DATASETS:
+  TRAIN: ("imagenet_1k_train",)
+  TEST: ("pascal_part_val","pascal_part_val","part_imagenet_valtest","part_imagenet_valtest",)
+MODEL:
+  SWIN:
+    USE_CHECKPOINT: False 
+  WEIGHTS: "weights/mask2former/instance/swinL_i21k_q200_e100.pkl"
+  META_ARCHITECTURE: "ProposalModel"
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 1
+  MASK_FORMER:
+    FREEZE_KEYS: ["backbone","encoder"]
+    IMPORTANCE_SAMPLE_RATIO: 3.0 
+    OVERSAMPLE_RATIO: 0.0
+PROPOSAL_LEARNING:
+  MIN_OBJECT_AREA_RATIO: 0.01
+  MIN_AREA_RATIO: 0.05 
+  MIN_SCORE: 0.0 
+  DATASET_PATH_LIST: ("pseudo_labels/part_labels/processed_proposals/max-gt-label/imagenet_1k_train/detic/res3_res4/dot_4_norm_False/", "pseudo_labels/part_labels/processed_proposals/human-only/imagenet_1k_train/detic/res3_res4/dot_4_norm_False/",)
+  DATASET_PATH: "pseudo_labels/part_labels/processed_proposals/max-gt-label/imagenet_1k_train/detic/res3_res4/dot_4_norm_False/" 
+  USE_PER_PIXEL_LABEL: False 
+  APPLY_MASKING_WITH_OBJECT_MASK: True 
+  POSTPROCESS_TYPES: ("prop","semseg","prop","semseg",) 
+  PATH_ONLY: True 
+  DEBUG: False # set to True for quick debug. 
+INPUT:
+  MIN_SIZE_TRAIN: (640,)
+  MAX_SIZE_TRAIN: 640
+  IMAGE_SIZE: 640
+  MASK_FORMAT: "bitmask"
+  SIZE_DIVISIBILITY: 16
+CUSTOM_DATASETS:
+  USE_MERGED_GT: True 
+  AUG_NAME_LIST: ["crop","scale","flip"]
+  BASE_SIZE: 640 
+TEST:
+  EVAL_PERIOD: 10000
+  DETECTIONS_PER_IMAGE: 200
+SOLVER:
+  BASE_LR: 0.00001
+  IMS_PER_BATCH: 64
+  MAX_ITER: 90000
+  STEPS: (75000, 85000)
+  AMP:
+    ENABLED: True 
+WANDB:
+  PROJECT: "proposal_learning"
+  VIS_PERIOD_TRAIN: 2000 
+  VIS_PERIOD_TEST: 100 
+  DISABLE_WANDB: True # set it to False for W&B visualization. 
+FP16: True 
+USE_CHECKPOINT: True 
+OUTPUT_DIR: "output/PartProposalLearning/IN1K+Human/"
+VIS_OUTPUT_DIR: "vis_logs/PartProposalLearning/IN1K+Human/"

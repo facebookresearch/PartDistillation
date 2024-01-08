@@ -3,9 +3,10 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 import copy
 import logging
-import os
+import os 
 import numpy as np
 import torch
 from detectron2.config import configurable
@@ -24,24 +25,24 @@ class ImagenetPartRankingDatasetMapper:
         base_aug,
         aug,
         class_code_to_class_index,
-        instance_mask_format: str = "bitmask",
+        instance_mask_format: str = "bitmask", 
     ):
-        self.base_aug = base_aug
-        self.aug = aug
+        self.base_aug = base_aug 
+        self.aug = aug 
         self.img_format = image_format
         self.class_code_to_class_index = class_code_to_class_index
         self.instance_mask_format = instance_mask_format
-
+    
     @classmethod
     def from_config(cls, cfg, class_code_to_class_index):
         image_size = cfg.INPUT.IMAGE_SIZE
-
-        # Need to resize to match GT.
+        
+        # Need to resize to match GT. 
         base_aug = [T.ResizeScale(
                     min_scale=1.0, max_scale=1.0, target_height=image_size, target_width=image_size),
                     ]
-        aug = [T.FixedSizeCrop(crop_size=(image_size, image_size))]
-
+        aug = [T.FixedSizeCrop(crop_size=(image_size, image_size))] 
+        
         ret = {
             "base_aug": base_aug,
             "aug": aug,
@@ -55,8 +56,8 @@ class ImagenetPartRankingDatasetMapper:
 
 
     def __call__(self, dataset_dict):
-        image_original = utils.read_image(dataset_dict["file_name"], format=self.img_format)
-        image, _ = T.apply_transform_gens(self.base_aug, image_original)
+        image_original = utils.read_image(dataset_dict["file_name"], format=self.img_format) 
+        image, _ = T.apply_transform_gens(self.base_aug, image_original) 
         image_shape1 = image.shape
 
         image, transforms = T.apply_transform_gens(self.aug, image)
@@ -81,15 +82,15 @@ class ImagenetPartRankingDatasetMapper:
         parts_list = dataset_dict["pseudo_annotations"]
         class_code = dataset_dict["class_code"]
 
-        # NOTE: We do not use these information for pseudo label, but
-        # to make the below functions happy we need them.
+        # NOTE: We do not use these information for pseudo label, but 
+        # to make the below functions happy we need them. 
         # NOTE: set "by_box=False" for filtering empty instances !!!
         for part in parts_list:
             part["bbox"] = [0, 0, image_shape[0], image_shape[1]]
             part["bbox_mode"] = BoxMode.XYXY_ABS
             if "category_id" not in part:
                 part["category_id"] = -1
-
+        
         # Get flat list of annotations.
         annos = [utils.transform_instance_annotations(
                     part,
@@ -97,11 +98,17 @@ class ImagenetPartRankingDatasetMapper:
                     image_shape,
                 ) for part in parts_list]
 
+        # NOTE: detectron2 pads 255 instead of 0 so make sure padding is correct. 
+        if annos[0]['segmentation'].dtype == np.uint8:
+            masks = torch.tensor([_['segmentation'] for _ in annos])
+            for ann in annos:
+                ann['segmentation'][ann['segmentation']==255] = 0
+        
         # Convert to instances.
         instances = utils.annotations_to_instances(
             annos, image_shape, mask_format=self.instance_mask_format
         )
-
+        
         if hasattr(instances, 'gt_masks'):
             instances.gt_boxes = instances.gt_masks.get_bounding_boxes()
             instances = utils.filter_empty_instances(instances, by_box=False)
@@ -111,3 +118,5 @@ class ImagenetPartRankingDatasetMapper:
         new_instances.set("gt_masks", BitMasks(instances.gt_masks.tensor.sum(0)[None]))
         new_instances.set("gt_classes", torch.tensor([self.class_code_to_class_index[class_code]]))
         dataset_dict["instances"] = new_instances
+
+

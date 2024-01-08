@@ -1,0 +1,24 @@
+_BASE_: "detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml"
+MODEL:
+  META_ARCHITECTURE: "LabelingDetic"
+  WEIGHTS: "weights/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth"
+  ROI_BOX_HEAD:
+    ZEROSHOT_WEIGHT_PATH: 'Detic/datasets/metadata/oid_clip_a+cname.npy'
+  ROI_HEADS:
+    NUM_CLASSES: 500       # not used
+    SCORE_THRESH_TEST: 0.0 # no threshold. 
+PROPOSAL_GENERATION:
+  BATCH_SIZE: 1 
+  DETIC_LABELING_MODE: "max-gt-label"
+  ROOT_FOLDER_NAME: "pseudo_labels" # name of the folder to save
+  SAVE_SCORE_THRESHOLD: 0.0 
+  DEBUG: False        # set it to True for quick debug.
+  PARTITION_INDEX: 0  # used when multi processing
+  TOTAL_PARTITIONS: 0 # set to greater than 0 when multi processing
+INPUT:
+  IMAGE_SIZE: 640
+DATASETS:
+  TEST: ('imagenet_1k_train',)
+TEST:
+  DETECTIONS_PER_IMAGE: 1000
+OUTPUT_DIR: "output/detic/"

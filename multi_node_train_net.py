@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 #!/usr/bin/env python
 import argparse
 import os
@@ -231,7 +232,7 @@ def main():
     timeout_min = args.timeout
     kwargs = {}
     if args.use_volta32:
-        # "constraint" is deprecated.
+        # "constraint" is deprecated. 
         kwargs["slurm_constraint"] = "volta32gb"
     if args.comment:
         kwargs["comment"] = args.comment

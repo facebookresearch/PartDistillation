@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 import logging
 import os
 import numpy as np
@@ -29,7 +30,7 @@ class Supervised_mIOU_Evaluator(SemSegEvaluator):
         self._output_dir = output_dir
         self._cpu_device = torch.device("cpu")
         self._num_classes = num_classes
-        self._class_names =  MetadataCatalog.get(dataset_name).thing_classes
+        self._class_names =  MetadataCatalog.get(dataset_name).thing_classes 
         self._logger.info("Supervised mIOU-evaluator initialized (gt:{}).".format(self._num_classes))
 
     def reset(self):
@@ -40,9 +41,9 @@ class Supervised_mIOU_Evaluator(SemSegEvaluator):
             pred_instances = output_per_image["predictions"].to(self._cpu_device)
             gt_instances = output_per_image["gt_instances"].to(self._cpu_device)
 
-            pred_masks = pred_instances.pred_masks
-            pred_classes = pred_instances.pred_classes
-            gt_masks = gt_instances.gt_masks
+            pred_masks = pred_instances.pred_masks 
+            pred_classes = pred_instances.pred_classes  
+            gt_masks = gt_instances.gt_masks 
             gt_classes = gt_instances.gt_classes
 
             assert pred_masks.shape[1:] == gt_masks.shape[1:]
@@ -58,8 +59,8 @@ class Supervised_mIOU_Evaluator(SemSegEvaluator):
     def _binary_mask_to_semseg(self, masks, classes):
         semseg = torch.full(masks.shape[1:], fill_value=self._num_classes)
         for i, c in enumerate(classes):
-            semseg[torch.where(masks[i]==True)] = c
-        return semseg
+            semseg[torch.where(masks[i]==True)] = c 
+        return semseg 
 
     def evaluate(self):
         seg_results_all = {"mIoU": [],
@@ -78,7 +79,7 @@ class Supervised_mIOU_Evaluator(SemSegEvaluator):
             seg_results_all["mIoU"].extend([v for k, v in seg_results.items() if "IoU-" in k and not np.isnan(v)])
             seg_results_all["mACC"].append(seg_results["mACC"])
             seg_results_all["mIoPred"].append(seg_results["mIoPred"])
-
+        
         seg_results_all["mIoU"] = np.mean(seg_results_all["mIoU"])
         seg_results_all["mIoPred"] = np.mean(seg_results_all["mIoPred"])
         seg_results_all["mACC"] = np.mean(seg_results_all["mACC"])
@@ -94,7 +95,7 @@ class Supervised_mIOU_Evaluator(SemSegEvaluator):
             bg considered separately
         class_names: List with names of forground classes
         """
-        num_classes = self._num_classes
+        num_classes = self._num_classes 
         class_names = self._class_names
 
         acc = np.full(num_classes, np.nan, dtype=float)

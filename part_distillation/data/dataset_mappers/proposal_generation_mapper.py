@@ -3,9 +3,10 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 import copy
 import logging
-import os
+import os 
 import numpy as np
 import torch
 from detectron2.config import configurable
@@ -27,8 +28,8 @@ class ProposalGenerationMapper:
         self.aug = augmentations
         self.img_format = image_format
         self.with_given_mask = with_given_mask
-        self.logger = logging.getLogger("part_distillation")
-
+        self.logger = logging.getLogger("part_distillation") 
+    
     @classmethod
     def from_config(cls, cfg):
         # Build augmentation
@@ -48,10 +49,7 @@ class ProposalGenerationMapper:
         return ret
 
     def __call__(self, dataset_dict):
-        try:
-            image_original = utils.read_image(dataset_dict["file_path"], format=self.img_format)
-        except:
-            return
+        image_original = utils.read_image(dataset_dict["file_path"], format=self.img_format)
         utils.check_image_size(dataset_dict, image_original)
 
         image, _ = T.apply_transform_gens(self.aug, image_original)
@@ -65,29 +63,33 @@ class ProposalGenerationMapper:
         dataset_dict["image"] = torch.as_tensor(np.ascontiguousarray(image.transpose(2, 0, 1)))
 
         if self.with_given_mask:
-            self._transform_annotations(dataset_dict, [], image_shape)
+            pseudo_annotations = torch.load(dataset_dict['object_mask_path'])
+            if len(pseudo_annotations["object_masks"]) > 0:
+                dataset_dict["pseudo_annotations"] = [{"segmentation" : pseudo_annotations["object_masks"][0]["segmentation"]}]
+                self._transform_annotations(dataset_dict, [], image_shape) 
+            else:
+                self.logger.info("No object mask detected on {}.".format(dataset_dict['object_mask_path']))
+                return None 
             if not dataset_dict["instances"].has("gt_masks") or len(dataset_dict["instances"]) == 0:
                 self.logger.info("No mask detected on {}.".format(dataset_dict["file_path"]))
-                return None
-            else:
-                return dataset_dict
-        else:
-            return dataset_dict
+                return None 
 
-
-
+        return dataset_dict
+        
+    
+    
     def _transform_annotations(self, dataset_dict, transforms, image_shape):
         object_list = dataset_dict["pseudo_annotations"]
 
-        # NOTE: We do not use these information for pseudo label, but
-        # to make the below functions happy we need them.
+        # NOTE: We do not use these information for pseudo label, but 
+        # to make the below functions happy we need them. 
         # NOTE: set "by_box=False" for filtering empty instances !!!
         for obj in object_list:
             obj["bbox"] = [0, 0, image_shape[0], image_shape[1]]
-            obj["bbox_mode"] = BoxMode.XYXY_ABS
+            obj["bbox_mode"] = BoxMode.XYXY_ABS 
             if "category_id" not in obj:
                 obj["category_id"] = -1
-
+        
         # Get flat list of annotations.
         annos = [utils.transform_instance_annotations(
                     obj,
@@ -102,5 +104,8 @@ class ProposalGenerationMapper:
         if hasattr(instances, 'gt_masks'):
             instances.gt_boxes = instances.gt_masks.get_bounding_boxes()
             instances = utils.filter_empty_instances(instances, by_box=False)
+        
+        dataset_dict["instances"] = instances 
 
-        dataset_dict["instances"] = instances
+
+

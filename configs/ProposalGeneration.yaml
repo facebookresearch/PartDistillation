@@ -1,0 +1,39 @@
+_BASE_: mask2former/coco/instance-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_100ep.yaml
+DATASETS:
+  TRAIN: ("imagenet_1k_train",)
+  TEST: ("imagenet_1k_train",)
+MODEL:
+  SWIN:
+    USE_CHECKPOINT: False 
+  WEIGHTS: "weights/mask2former/instance/swinL_i21k_q200_e100.pkl"
+  META_ARCHITECTURE: "ProposalGenerationModel"
+PROPOSAL_GENERATION:
+  BATCH_SIZE: 1 
+  DETIC_LABELING_MODE: "max-gt-label"
+  OBJECT_MASK_PATH: "pseudo_labels/object_labels/detic_predictions/max-gt-label/imagenet_1k_train/"
+  NUM_SUPERPIXEL_CLUSTERS: 4 
+  DATASET_NAME: "imagenet_1k_train"
+  OBJECT_MASK_TYPE: "detic"
+  WITH_GIVEN_MASK: True 
+  DISTANCE_METRIC: "dot"
+  BACKBONE_FEATURE_KEY_LIST: '["res3","res4"]'
+  FEATURE_NORMALIZE: False 
+  ROOT_FOLDER_NAME: "pseudo_labels" # name of the folder to save
+  SAVE_SCORE_THRESHOLD: 0.0 
+  DEBUG: False        # set it to True for quick debug.
+  PARTITION_INDEX: 0  # used when multi processing
+  TOTAL_PARTITIONS: 0 # set to greater than 0 when multi processing
+INPUT:
+  MIN_SIZE_TRAIN: (640,)
+  MAX_SIZE_TRAIN: 640
+  IMAGE_SIZE: 640
+  MASK_FORMAT: "bitmask"
+TEST:
+  EVAL_PERIOD: 1000
+  DETECTIONS_PER_IMAGE: 200
+SOLVER:
+  IMS_PER_BATCH: 32
+WANDB:
+  PROJECT: "proposal_generation"
+  VIS_PERIOD_TEST: 2000 
+  DISABLE_WANDB: True # set it to False for W&B visualization.

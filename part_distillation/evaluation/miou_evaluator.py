@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 import logging
 import os
 import numpy as np
@@ -43,10 +44,10 @@ class mIOU_Evaluator(SemSegEvaluator):
             pred_instances = output_per_image["predictions"].to(self._cpu_device)
             gt_instances = output_per_image["gt_instances"].to(self._cpu_device)
 
-            pred_masks = pred_instances.pred_masks
-            pred_classes = pred_instances.pred_classes
-            gt_masks = gt_instances.gt_masks
-            gt_classes = gt_instances.gt_classes
+            pred_masks = pred_instances.pred_masks 
+            pred_classes = pred_instances.pred_classes  
+            gt_masks = gt_instances.gt_masks 
+            gt_classes = gt_instances.gt_classes 
             gt_object_class = output_per_image["gt_object_label"].item()
 
             assert pred_masks.shape[1:] == gt_masks.shape[1:]
@@ -66,8 +67,8 @@ class mIOU_Evaluator(SemSegEvaluator):
     def _binary_mask_to_semseg(self, masks, classes):
         semseg = torch.full(masks.shape[1:], fill_value=self.gt_num_classes)
         for i, c in enumerate(classes):
-            semseg[torch.where(masks[i]==True)] = c
-        return semseg
+            semseg[torch.where(masks[i]==True)] = c 
+        return semseg 
 
     def evaluate(self):
         self._logger.info("Start evaluating ...")
@@ -80,9 +81,9 @@ class mIOU_Evaluator(SemSegEvaluator):
             classes_used_total = all_gather(self._classes_used)
             for cset in classes_used_total:
                 _classes_used = _classes_used.union(cset)
-            self._classes_used = _classes_used
+            self._classes_used = _classes_used 
 
-            synchronize()
+            synchronize() 
             for k in self._classes_used:
                 if k not in self._conf_matrix:
                     self._conf_matrix[k] = np.zeros((self.gt_num_classes + 1, self.gt_num_classes + 1), \
@@ -103,7 +104,7 @@ class mIOU_Evaluator(SemSegEvaluator):
                 seg_results_all["A-mACC"].extend([v for k, v in seg_results.items() if "ACC-" in k and not np.isnan(v)])
                 seg_results_all["C-mIoPred"].append(seg_results["mIoPred"])
                 seg_results_all["A-mIoPred"].extend([v for k, v in seg_results.items() if "IoPred-" in k and not np.isnan(v)])
-
+        
         seg_results_all["C-mIoU"] = np.mean(seg_results_all["C-mIoU"])
         seg_results_all["A-mIoU"] = np.mean(seg_results_all["A-mIoU"])
         seg_results_all["C-mIoPred"] = np.mean(seg_results_all["C-mIoPred"])
@@ -123,7 +124,7 @@ class mIOU_Evaluator(SemSegEvaluator):
             bg considered separately
         class_names: List with names of forground classes
         """
-        num_classes = self.gt_num_classes
+        num_classes = self.gt_num_classes 
         class_names = self._class_names
 
         acc = np.full(num_classes, np.nan, dtype=float)

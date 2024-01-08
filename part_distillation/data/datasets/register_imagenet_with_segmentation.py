@@ -3,16 +3,17 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import os
-import logging
-import torch
+
+import os  
+import logging 
+import torch 
 from detectron2.data import DatasetCatalog, MetadataCatalog
 from typing import List
 
 IMAGENET_1K_DATASET_PATH = "datasets/imagenet_1k/"
 IMAGENET_22K_DATASET_PATH = "datasets/imagenet_22k/"
-EXCLUDE_CODE_PATH = "datasets/metadata/imagenet_exclude_code_list.pkl"
-
+EXCLUDE_CODE_PATH = "datasets/metadata/exclude_code_list.pkl"
+METADATA_PATH = "datasets/metadata/"
 
 def load_multiple_imagenet_images(filename_list, dataset_path_list, class_code_to_class_id, path_only=False, debug=False):
     logger = logging.getLogger("part_distillation")
@@ -33,7 +34,7 @@ def load_imagenet_images(filename_list, dataset_path, class_code_to_class_id, pa
     logger.info("Start loading imagenet data path from {}.".format(dataset_path))
 
     dict_list = []
-    count = 0
+    count = 0 
     used  = 0
     filename_list = [fname for fname in filename_list if fname in os.listdir(dataset_path)]
     if debug:
@@ -59,21 +60,21 @@ def register_imagenet_with_segmentation(
     dataset_path: str,
     split: str,
     partitioned_imagenet: bool=False,
-    total_partitions: int=10,
+    total_partitions: int=10, 
     partition_index: int=0,
     dataset_path_list=[],
     filtered_code_path_list: List[str]=[""],
     exclude_code_path: str="",
     single_class_code: str="",
     path_only: bool=False,
-    debug=False,
+    debug=False, 
 ):
     logger = logging.getLogger("part_distillation")
     logger.info("Start registering imagenet with segmentation.")
     if "1k" in name:
-        with open(os.path.join(IMAGENET_1K_DATASET_PATH, "labels.txt"), "r") as f:
-            fname_cname_pair_list = f.readlines()
-        fname_to_classname = {x.split(',')[0]: x.split(',')[1].strip() for x in fname_cname_pair_list}
+        imagenet_size = "1k"
+        dataset_path = IMAGENET_1K_DATASET_PATH + "train"
+        fname_to_classname = torch.load(os.path.join(METADATA_PATH, 'imagenet_1k_fname_classname_dict.pkl'))
     elif "22k" in name:
         with open(os.path.join(IMAGENET_22K_DATASET_PATH, "synsets.dat"), "r") as f:
             class_code_list = f.readlines()
@@ -82,8 +83,8 @@ def register_imagenet_with_segmentation(
             fname_cname_pair_list = f.readlines()
         fname_to_classname = {x.split('\t')[0]: x.split('\t')[1].strip() for x in fname_cname_pair_list}
         fname_to_classname = {k:v for k, v in fname_to_classname.items() if k in class_code_list}
-
-    # Use subset classes.
+    
+    # Use subset classes. 
     for filtered_code_path in filtered_code_path_list:
         if len(filtered_code_path) > 0:
             filtered_code_list = torch.load(filtered_code_path)
@@ -93,13 +94,13 @@ def register_imagenet_with_segmentation(
     if len(exclude_code_path) > 0:
         exclude_code_list = torch.load(exclude_code_path)
         fname_to_classname = {k:v for k, v in fname_to_classname.items() if k not in exclude_code_list}
-    class_code_to_class_id = {k: i for i, k in enumerate(list(fname_to_classname.keys()))}
+    class_code_to_class_id = {k: i for i, k in enumerate(list(fname_to_classname.keys()))}    
 
     key_list_all = list(fname_to_classname.keys())
     if partitioned_imagenet:
-        # Parallelize the preprocessing.
+        # Parallelize the preprocessing. 
         partition_size = len(key_list_all) // total_partitions
-        start_i = partition_index * partition_size
+        start_i = partition_index * partition_size 
         end_i = (partition_index+1) * partition_size if partition_index + 1 < total_partitions else len(list(fname_to_classname.keys()))
         key_list = list(key_list_all)[start_i: end_i]
         fname_to_classname = {k: fname_to_classname[k] for k in key_list}
@@ -107,7 +108,7 @@ def register_imagenet_with_segmentation(
 
     if len(dataset_path_list) == 0:
         dataset_path_list = [dataset_path]
-
+    
     DatasetCatalog.register(
     name,
     lambda: load_multiple_imagenet_images(

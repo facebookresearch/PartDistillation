@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 import logging
 import fvcore.nn.weight_init as weight_init
 from typing import Optional
@@ -25,89 +26,14 @@ class PartDistillationTransformerDecoder(MultiScaleMaskedTransformerDecoder):
         self,
         in_channels,
         mask_classification,
-        # *,
-        # num_classes: int,
-        # hidden_dim: int,
-        # num_queries: int,
-        # nheads: int,
-        # dim_feedforward: int,
-        # dec_layers: int,
-        # pre_norm: bool,
-        # mask_dim: int,
         *args,
         num_object_classes: int,
         num_part_classes: int,
         **kwargs,
     ):
         super().__init__(in_channels, mask_classification, *args, **kwargs)
-        # assert mask_classification, "Only support mask classification model"
-        # self.mask_classification = mask_classification
-
-        # # positional encoding
-        # N_steps = hidden_dim // 2
-        # self.pe_layer = PositionEmbeddingSine(N_steps, normalize=True)
-
-        # # define Transformer decoder here
-        # self.num_heads = nheads
-        # self.num_layers = dec_layers
-        # self.transformer_self_attention_layers = nn.ModuleList()
-        # self.transformer_cross_attention_layers = nn.ModuleList()
-        # self.transformer_ffn_layers = nn.ModuleList()
-
-        # for _ in range(self.num_layers):
-        #     self.transformer_self_attention_layers.append(
-        #         SelfAttentionLayer(
-        #             d_model=hidden_dim,
-        #             nhead=nheads,
-        #             dropout=0.0,
-        #             normalize_before=pre_norm,
-        #         )
-        #     )
-
-        #     self.transformer_cross_attention_layers.append(
-        #         CrossAttentionLayer(
-        #             d_model=hidden_dim,
-        #             nhead=nheads,
-        #             dropout=0.0,
-        #             normalize_before=pre_norm,
-        #         )
-        #     )
-
-        #     self.transformer_ffn_layers.append(
-        #         FFNLayer(
-        #             d_model=hidden_dim,
-        #             dim_feedforward=dim_feedforward,
-        #             dropout=0.0,
-        #             normalize_before=pre_norm,
-        #         )
-        #     )
-
-        # self.decoder_norm = nn.LayerNorm(hidden_dim)
-
-        # self.num_queries = num_queries
-        # # learnable query features
-        # self.query_feat = nn.Embedding(num_queries, hidden_dim)
-        # # learnable query p.e.
-        # self.query_embed = nn.Embedding(num_queries, hidden_dim)
-
-        # # level embedding (we always use 3 scales)
-        # self.num_feature_levels = 3
-        # self.level_embed = nn.Embedding(self.num_feature_levels, hidden_dim)
-        # self.input_proj = nn.ModuleList()
-        # for _ in range(self.num_feature_levels):
-        #     if in_channels != hidden_dim or enforce_input_project:
-        #         self.input_proj.append(Conv2d(in_channels, hidden_dim, kernel_size=1))
-        #         weight_init.c2_xavier_fill(self.input_proj[-1])
-        #     else:
-        #         self.input_proj.append(nn.Sequential())
-
-        # output FFNs
-        # if self.mask_classification:
-        #     self.class_embed = nn.Linear(self.hidden_dim, num_part_classes * num_object_classes + 1).double()
         self.class_embed = nn.Linear(self.hidden_dim, num_part_classes * num_object_classes + 1).double()
-        # self.mask_embed = MLP(hidden_dim, hidden_dim, mask_dim, 3)
-        # self.query_feature_normalize = query_feature_normalize
-        self.num_part_classes = num_part_classes
+        self.num_part_classes = num_part_classes 
 
 
     @classmethod
@@ -115,7 +41,7 @@ class PartDistillationTransformerDecoder(MultiScaleMaskedTransformerDecoder):
         ret = {}
         ret["in_channels"] = in_channels
         ret["mask_classification"] = mask_classification
-
+        
         ret["num_classes"] = cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES
         ret["hidden_dim"] = cfg.MODEL.MASK_FORMER.HIDDEN_DIM
         ret["num_queries"] = cfg.MODEL.MASK_FORMER.NUM_OBJECT_QUERIES
@@ -144,9 +70,9 @@ class PartDistillationTransformerDecoder(MultiScaleMaskedTransformerDecoder):
         src = []
         pos = []
         size_list = []
-
+        
         # NOTE: We abuse [mask] argument, but it works for now
-        targets = mask
+        targets = mask 
 
         for i in range(self.num_feature_levels):
             size_list.append(x[i].shape[-2:])
@@ -167,7 +93,7 @@ class PartDistillationTransformerDecoder(MultiScaleMaskedTransformerDecoder):
         predictions_mask = []
 
         # prediction heads on learnable query features
-        outputs_class, outputs_mask, attn_mask, _ = self.forward_prediction_heads(output, mask_features, targets,
+        outputs_class, outputs_mask, attn_mask, _ = self.forward_prediction_heads(output, mask_features, targets, 
                                                         attn_mask_target_size=size_list[0])
         predictions_class.append(outputs_class)
         predictions_mask.append(outputs_mask)
@@ -188,20 +114,20 @@ class PartDistillationTransformerDecoder(MultiScaleMaskedTransformerDecoder):
                 tgt_key_padding_mask=None,
                 query_pos=query_embed
             )
-
+            
             # FFN
             output = self.transformer_ffn_layers[i](
                 output
             )
 
-            outputs_class, outputs_mask, attn_mask, decoder_output = self.forward_prediction_heads(output, mask_features, targets,
+            outputs_class, outputs_mask, attn_mask, decoder_output = self.forward_prediction_heads(output, mask_features, targets, 
                                                                     attn_mask_target_size=size_list[(i + 1) % self.num_feature_levels])
             predictions_class.append(outputs_class)
             predictions_mask.append(outputs_mask)
 
 
         out = {
-            'query_feats': output.permute(1, 0, 2),
+            'query_feats': output.permute(1, 0, 2), 
             'pred_logits': predictions_class[-1],
             'pred_masks': predictions_mask[-1],
             'aux_outputs': self._set_aux_loss(
@@ -211,24 +137,24 @@ class PartDistillationTransformerDecoder(MultiScaleMaskedTransformerDecoder):
         }
 
         return out
-
+    
     def apply_gradient_mask(self, outputs, targets):
-        # outputs: BxQxC
+        # outputs: BxQxC 
         new_outputs = []
         for i, target_per_image in enumerate(targets):
             start_idx = target_per_image["gt_object_class"] * self.num_part_classes
             end_idx = (target_per_image["gt_object_class"] + 1) * self.num_part_classes
 
             new_outputs.append(outputs[i][:, start_idx:end_idx])
-
+                
         new_outputs = torch.stack(new_outputs, dim=0)
         new_outputs = torch.cat([new_outputs, outputs[:, :, -1:]], dim=-1)
-
+        
         # NOTE: Ugly trick to make pytorch optimizer happy ...
-        new_outputs = new_outputs + (outputs.sum() * 0)
+        new_outputs = new_outputs + (outputs.sum() * 0) 
 
         return new_outputs
-
+    
 
     def forward_prediction_heads(self, output, mask_features, targets, attn_mask_target_size):
         decoder_output = self.decoder_norm(output)
@@ -252,3 +178,4 @@ class PartDistillationTransformerDecoder(MultiScaleMaskedTransformerDecoder):
         attn_mask = attn_mask.detach()
 
         return outputs_class, outputs_mask, attn_mask, decoder_output
+

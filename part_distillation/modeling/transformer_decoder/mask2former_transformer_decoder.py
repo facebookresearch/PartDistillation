@@ -1,8 +1,4 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
+# Copyright (c) Facebook, Inc. and its affiliates.
 # Modified by Bowen Cheng from: https://github.com/facebookresearch/detr/blob/master/models/detr.py
 import logging
 import fvcore.nn.weight_init as weight_init
@@ -16,12 +12,14 @@ from detectron2.layers import Conv2d
 
 from .position_encoding import PositionEmbeddingSine
 from .maskformer_transformer_decoder import TRANSFORMER_DECODER_REGISTRY
+from fairscale.nn.checkpoint import checkpoint_wrapper
 
 
 class SelfAttentionLayer(nn.Module):
 
     def __init__(self, d_model, nhead, dropout=0.0,
-                 activation="relu", normalize_before=False):
+                 activation="relu", normalize_before=False,
+                 fp16=False):
         super().__init__()
         self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
 
@@ -30,9 +28,9 @@ class SelfAttentionLayer(nn.Module):
 
         self.activation = _get_activation_fn(activation)
         self.normalize_before = normalize_before
-
+        self.fp16 = fp16 
         self._reset_parameters()
-
+    
     def _reset_parameters(self):
         for p in self.parameters():
             if p.dim() > 1:
@@ -62,7 +60,7 @@ class SelfAttentionLayer(nn.Module):
         tgt2 = self.self_attn(q, k, value=tgt2, attn_mask=tgt_mask,
                               key_padding_mask=tgt_key_padding_mask)[0]
         tgt = tgt + self.dropout(tgt2)
-
+        
         return tgt
 
     def forward(self, tgt,
@@ -90,7 +88,7 @@ class CrossAttentionLayer(nn.Module):
         self.normalize_before = normalize_before
 
         self._reset_parameters()
-
+    
     def _reset_parameters(self):
         for p in self.parameters():
             if p.dim() > 1:
@@ -110,7 +108,7 @@ class CrossAttentionLayer(nn.Module):
                                    key_padding_mask=memory_key_padding_mask)[0]
         tgt = tgt + self.dropout(tgt2)
         tgt = self.norm(tgt)
-
+        
         return tgt
 
     def forward_pre(self, tgt, memory,
@@ -155,7 +153,7 @@ class FFNLayer(nn.Module):
         self.normalize_before = normalize_before
 
         self._reset_parameters()
-
+    
     def _reset_parameters(self):
         for p in self.parameters():
             if p.dim() > 1:
@@ -252,6 +250,7 @@ class MultiScaleMaskedTransformerDecoder(nn.Module):
         mask_dim: int,
         enforce_input_project: bool,
         query_feature_normalize: bool,
+        use_checkpoint: bool=False,
     ):
         """
         NOTE: this interface is experimental.
@@ -278,7 +277,7 @@ class MultiScaleMaskedTransformerDecoder(nn.Module):
         # positional encoding
         N_steps = hidden_dim // 2
         self.pe_layer = PositionEmbeddingSine(N_steps, normalize=True)
-
+        
         # define Transformer decoder here
         self.num_heads = nheads
         self.num_layers = dec_layers
@@ -340,12 +339,22 @@ class MultiScaleMaskedTransformerDecoder(nn.Module):
         self.mask_embed = MLP(hidden_dim, hidden_dim, mask_dim, 3)
         self.query_feature_normalize = query_feature_normalize
 
+        if use_checkpoint:
+            for layer in self.transformer_self_attention_layers:
+                layer = checkpoint_wrapper(layer)
+            
+            for layer in self.transformer_cross_attention_layers:
+                layer = checkpoint_wrapper(layer)
+
+            for layer in self.transformer_ffn_layers:
+                layer = checkpoint_wrapper(layer)
+
     @classmethod
     def from_config(cls, cfg, in_channels, mask_classification):
         ret = {}
         ret["in_channels"] = in_channels
         ret["mask_classification"] = mask_classification
-
+        
         ret["num_classes"] = cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES
         ret["hidden_dim"] = cfg.MODEL.MASK_FORMER.HIDDEN_DIM
         ret["num_queries"] = cfg.MODEL.MASK_FORMER.NUM_OBJECT_QUERIES
@@ -364,6 +373,7 @@ class MultiScaleMaskedTransformerDecoder(nn.Module):
         ret["enforce_input_project"] = cfg.MODEL.MASK_FORMER.ENFORCE_INPUT_PROJ
         ret["query_feature_normalize"] = cfg.MODEL.MASK_FORMER.QUERY_FEATURE_NORMALIZE
         ret["mask_dim"] = cfg.MODEL.SEM_SEG_HEAD.MASK_DIM
+        ret["use_checkpoint"] = cfg.USE_CHECKPOINT
 
         return ret
 
@@ -416,7 +426,7 @@ class MultiScaleMaskedTransformerDecoder(nn.Module):
                 tgt_key_padding_mask=None,
                 query_pos=query_embed
             )
-
+            
             # FFN
             output = self.transformer_ffn_layers[i](
                 output

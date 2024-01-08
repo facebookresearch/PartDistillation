@@ -3,12 +3,13 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import os
+
+import os 
 import torch
 import logging
-import numpy as np
+import numpy as np 
 import detectron2.utils.comm as comm
-import wandb
+import wandb 
 
 from torch import nn
 from torch.nn import functional as F
@@ -54,6 +55,9 @@ class PartRankingModel(nn.Module):
         classifier_metric: str="l2",
         dataset_name: str="",
         proposal_features_norm: bool=True,
+        root_folder_name: str="pseudo_labels",
+        weight_name: str="default",
+        save_annotations: bool=False,
         debug: bool=False,
     ):
         super().__init__()
@@ -67,16 +71,16 @@ class PartRankingModel(nn.Module):
         self.size_divisibility = size_divisibility
         self.register_buffer("pixel_mean", torch.Tensor(pixel_mean).view(-1, 1, 1), False)
         self.register_buffer("pixel_std", torch.Tensor(pixel_std).view(-1, 1, 1), False)
-
+        
         # wandb
         self.use_wandb = use_wandb
-        self.num_iters = 0
+        self.num_iters = 0 
         self.wandb_vis_period = wandb_vis_period
         self.cpu_device = torch.device("cpu")
         self.wandb_vis_topk = wandb_vis_topk
 
         # postprocess
-        self.mode = ""
+        self.mode = "" 
         self.test_topk_per_image = test_topk_per_image
         self.proposal_features_norm = proposal_features_norm
         self.proposal_key = proposal_key
@@ -94,20 +98,29 @@ class PartRankingModel(nn.Module):
         self.majority_vote_mapping = {}
 
         # setup save dir
-        dataset_name_dir = dataset_name.replace("_pre_labeling", "")if not debug else "debug"
-        self.root_save_path = "pseudo_labels/part_labels/part_masks_with_class/{}/{}_{}/"\
-                            .format(dataset_name_dir, classifier_metric, num_clusters)
-        self.metadata = MetadataCatalog.get(dataset_name)
-        if comm.is_main_process():
-            if not os.path.exists(self.root_save_path):
-                os.makedirs(self.root_save_path)
-
-            for fname in self.metadata.class_codes:
-                folder_path = os.path.join(self.root_save_path, fname)
-                if not os.path.exists(folder_path):
-                    os.makedirs(folder_path)
-
-
+        if save_annotations:
+            dataset_name_dir = dataset_name.replace("_pre_labeling", "")if not debug else "debug"
+            self.root_save_path = "{}/part_labels/part_masks_with_class/{}/{}/{}_{}/r1_{}_s1_{}_r2_{}_s2_{}/"\
+                                .format(
+                                root_folder_name,  
+                                dataset_name_dir, 
+                                weight_name,
+                                classifier_metric, 
+                                num_clusters,
+                                min_pseudo_mask_ratio_1,
+                                min_pseudo_mask_score_1,
+                                min_pseudo_mask_ratio_2, 
+                                min_pseudo_mask_score_2)
+            self.metadata = MetadataCatalog.get(dataset_name)
+            if comm.is_main_process():
+                if not os.path.exists(self.root_save_path):
+                    os.makedirs(self.root_save_path)
+                
+                for fname in self.metadata.class_codes:
+                    folder_path = os.path.join(self.root_save_path, fname)
+                    if not os.path.exists(folder_path):
+                        os.makedirs(folder_path)
+    
 
     @classmethod
     def from_config(cls, cfg):
@@ -121,7 +134,7 @@ class PartRankingModel(nn.Module):
             "size_divisibility": cfg.MODEL.MASK_FORMER.SIZE_DIVISIBILITY,
             "pixel_mean": cfg.MODEL.PIXEL_MEAN,
             "pixel_std": cfg.MODEL.PIXEL_STD,
-            # wandb
+            # wandb 
             "wandb_vis_period": cfg.WANDB.VIS_PERIOD_TEST,
             "wandb_vis_topk": cfg.WANDB.VIS_TOPK,
             "use_wandb": not cfg.WANDB.DISABLE_WANDB,
@@ -135,13 +148,16 @@ class PartRankingModel(nn.Module):
             "dataset_name": cfg.DATASETS.TEST[0],
             "num_clusters": cfg.PART_RANKING.NUM_CLUSTERS,
             "proposal_features_norm": cfg.PART_RANKING.PROPOSAL_FEATURE_NORM,
-            "min_pseudo_mask_ratio_1": cfg.PART_RANKING.MIN_AREA_RATIO_1,
+            "min_pseudo_mask_ratio_1": cfg.PART_RANKING.MIN_AREA_RATIO_1, 
             "min_pseudo_mask_score_1": cfg.PART_RANKING.MIN_SCORE_1,
-            "min_pseudo_mask_ratio_2": cfg.PART_RANKING.MIN_AREA_RATIO_2,
+            "min_pseudo_mask_ratio_2": cfg.PART_RANKING.MIN_AREA_RATIO_2, 
             "min_pseudo_mask_score_2": cfg.PART_RANKING.MIN_SCORE_2,
+            "root_folder_name": cfg.PART_RANKING.ROOT_FOLDER_NAME,
+            "weight_name": cfg.PART_RANKING.WEIGHT_NAME,
+            "save_annotations": cfg.PART_RANKING.SAVE_ANNOTATIONS,
             "debug": cfg.PART_RANKING.DEBUG,
         }
-
+    
 
     def num_classes(self, k):
         return self.classifier[k.item()].weight.data.shape[0]
@@ -150,7 +166,7 @@ class PartRankingModel(nn.Module):
     def register_metadata(self, dataset_name):
         self.logger.info("{} is registered for evaluation.".format(dataset_name))
         self.metadata = MetadataCatalog.get(dataset_name)
-
+    
 
     def update_majority_vote_mapping(self, mapping_dict):
         self.logger.info("Updating class mapping based on majrotiy vote.")
@@ -162,7 +178,7 @@ class PartRankingModel(nn.Module):
     def device(self):
         return self.pixel_mean.device
 
-
+     
     def forward(self, batched_inputs):
         assert not self.training, "part ranking is eval-only."
         images = [x["image"].to(self.device) for x in batched_inputs]
@@ -203,8 +219,8 @@ class PartRankingModel(nn.Module):
             mask_cls_results, mask_pred_results, proposal_feats, targets, batched_inputs, images.image_sizes
         )):
             # NOTE: Unlike standard pipeline, we provide gt label as input for inference.
-            #       This reshapes the labels to input size already, so we want to reshape
-            #       both gts and predictions to the original image size.
+            #       This reshapes the labels to input size already, so we want to reshape 
+            #       both gts and predictions to the original image size. 
             height = input_per_image.get("height", image_size[0])
             width = input_per_image.get("width", image_size[1])
             mask_pred_result = retry_if_cuda_oom(sem_seg_postprocess)(mask_pred_result, image_size, height, width)
@@ -215,44 +231,44 @@ class PartRankingModel(nn.Module):
 
             if self.mode == "cluster":
                 masks_per_image, scores_per_image, proposal_feats_per_image = \
-                self.instance_inference_with_proposal_feats(proposal_feats_per_image,
-                                                            mask_cls_result,
-                                                            mask_pred_result,
-                                                            target_mask,
-                                                            target_object_mask,
+                self.instance_inference_with_proposal_feats(proposal_feats_per_image, 
+                                                            mask_cls_result, 
+                                                            mask_pred_result, 
+                                                            target_mask, 
+                                                            target_object_mask, 
                                                             vis=vis)
                 masks_per_image, scores_per_image, proposal_feats_per_image = \
-                self.match_gt_masks(masks_per_image,
-                                    scores_per_image,
-                                    proposal_feats_per_image,
+                self.match_gt_masks(masks_per_image, 
+                                    scores_per_image, 
+                                    proposal_feats_per_image, 
                                     target_mask)
 
                 result = Instances(image_size)
                 result.pred_masks = masks_per_image.bool()
                 result.scores = scores_per_image
-                processed_results[-1]["predictions"] = result
+                processed_results[-1]["predictions"] = result 
                 processed_results[-1]["proposal_features"] = proposal_feats_per_image
             else:
-                instance_r = self.instance_inference_with_classification(proposal_feats_per_image,
-                                                                         mask_cls_result,
-                                                                         mask_pred_result,
-                                                                         target_mask,
-                                                                         target_object_mask,
-                                                                         target["object_label"],
+                instance_r = self.instance_inference_with_classification(proposal_feats_per_image, 
+                                                                         mask_cls_result, 
+                                                                         mask_pred_result, 
+                                                                         target_mask, 
+                                                                         target_object_mask, 
+                                                                         target["object_label"], 
                                                                          vis=vis)
                 processed_results[-1]["predictions"] = instance_r
                 if not vis and self.mode == "save":
                     self.save_generated_part_labels(input_per_image, target["object_label"], instance_r)
-
+                
             target_inst = Instances(target_mask.shape[-2:])
             target_inst.gt_masks = target_mask
             target_inst.pred_masks = target_mask    # for visualization
             if "part_labels" in target:
                 target_inst.gt_classes = target["part_labels"]
             processed_results[-1]["gt_instances"] = target_inst
-            processed_results[-1]["gt_object_label"] = target["object_label"]
+            processed_results[-1]["gt_object_label"] = target["object_label"] 
             processed_results[-1]["gt_label"] = torch.tensor([target["object_label"] for _ in range(len(proposal_feats_per_image))])
-
+        
         return processed_results
 
 
@@ -263,33 +279,33 @@ class PartRankingModel(nn.Module):
             res = {"file_name": input_per_image["file_name"],
                     "image_id": input_per_image["image_id"],
                     "class_code": input_per_image["class_code"],
-                    "height": H,
-                    "width": W,
+                    "height": H, 
+                    "width": W, 
                     "part_masks": proposals_to_coco_json(instance.pred_masks.cpu()),
-                    "part_labels": instance.pred_classes.cpu(),
+                    "part_labels": instance.pred_classes.cpu(), 
                     "object_ratio": instance.pred_masks.cpu().sum().long().item() / (H*W),
                     "part_ratios": instance.pred_masks.cpu().flatten(1).sum(-1) / (H*W),
-                    "object_class_label": label.item(),
+                    "object_class_label": label.item(), 
                     "part_scores": instance.scores.cpu().numpy()}
             torch.save(res, os.path.join(self.root_save_path, input_per_image["class_code"], input_per_image["image_id"]))
 
 
-
+     
     def masking_with_object_mask(self, masks_per_image, target_masks):
         if self.apply_masking_with_object_mask:
-            object_target_mask = target_masks.sum(dim=0, keepdim=True).bool()
+            object_target_mask = target_masks.sum(dim=0, keepdim=True).bool() 
 
-            return masks_per_image * object_target_mask
+            return masks_per_image * object_target_mask 
         else:
             return masks_per_image
 
 
-
+     
     def match_gt_masks(self, masks_per_image, scores_per_image, prop_feats_per_image, target_masks):
         pairwise_mask_ious = get_iou_all_cocoapi(masks_per_image, target_masks)
 
         top1_ious, top1_idx = pairwise_mask_ious.topk(1, dim=1)
-
+        
         top1_idx = top1_idx.flatten()
         fg_idxs  = (top1_ious > self.fg_score_threshold).flatten()
 
@@ -300,11 +316,11 @@ class PartRankingModel(nn.Module):
         return masks_per_image, scores_per_image, prop_feats_per_image
 
 
-
+     
     def _unique_assignment_with_classes(self, masks_per_image, scores_per_image, class_labels):
         obj_map_per_image = masks_per_image.topk(1, dim=0)[0] > 0.
         if self.use_unique_per_pixel_label_during_labeling:
-            # segmentation
+            # segmentation 
             predmask_per_image = scores_per_image[:, None, None] * masks_per_image.sigmoid()
             scoremap_per_image = predmask_per_image.topk(1, dim=0)[1]
             query_indexs_list  = scoremap_per_image.unique()
@@ -322,19 +338,19 @@ class PartRankingModel(nn.Module):
                 newmasks_per_image[i] = segmasks_per_image[class_labels == cid].sum(dim=0).bool()
                 newscore_per_image[i] = scores_per_image[class_labels == cid].topk(1, dim=0)[0].flatten()
 
-            # filter
+            # filter 
             loc_valid_idxs = newmasks_per_image.flatten(1).sum(dim=1) / obj_map_per_image.flatten(1).sum(dim=1) > self.min_pseudo_mask_ratio_2
             if loc_valid_idxs.any():
                 newmasks_per_image = newmasks_per_image[loc_valid_idxs]
                 newscore_per_image = newscore_per_image[loc_valid_idxs]
                 new_class_labels = new_class_labels[loc_valid_idxs]
-
+            
             loc_valid_idxs = newscore_per_image > self.min_pseudo_mask_score_2
             if loc_valid_idxs.any():
                 newmasks_per_image = newmasks_per_image[loc_valid_idxs]
                 newscore_per_image = newscore_per_image[loc_valid_idxs]
                 new_class_labels = new_class_labels[loc_valid_idxs]
-
+    
             return newmasks_per_image.bool(), newscore_per_image, new_class_labels
         else:
             # filter
@@ -344,7 +360,7 @@ class PartRankingModel(nn.Module):
                 masks_per_image = predmask_per_image[loc_valid_idxs]
                 scores_per_image = scores_per_image[loc_valid_idxs]
                 class_labels = class_labels[loc_valid_idxs]
-
+            
             loc_valid_idxs = scores_per_image > self.min_pseudo_mask_score_2
             if loc_valid_idxs.any():
                 masks_per_image = masks_per_image[loc_valid_idxs]
@@ -354,11 +370,11 @@ class PartRankingModel(nn.Module):
             return (masks_per_image > 0), scores_per_image, class_labels
 
 
-
+     
     def _unique_assignment(self, masks_per_image, scores_per_image, prop_feats_per_image, mask_prop_feats=None):
         obj_map_per_image = masks_per_image.topk(1, dim=0)[0] > 0.
         if self.use_unique_per_pixel_label_during_clustering:
-            # unique assignment
+            # unique assignment 
             predmask_per_image = scores_per_image[:, None, None] * masks_per_image.sigmoid()
             scoremap_per_image = predmask_per_image.topk(1, dim=0)[1]
             query_indexs_list  = scoremap_per_image.unique()
@@ -374,13 +390,13 @@ class PartRankingModel(nn.Module):
                 newmasks_per_image = newmasks_per_image[loc_valid_idxs]
                 scores_per_image = scores_per_image[loc_valid_idxs]
                 prop_feats_per_image = prop_feats_per_image[loc_valid_idxs]
-
+            
             loc_valid_idxs = scores_per_image > self.min_pseudo_mask_score_1
             if loc_valid_idxs.any():
                 newmasks_per_image = newmasks_per_image[loc_valid_idxs]
                 scores_per_image = scores_per_image[loc_valid_idxs]
                 prop_feats_per_image = prop_feats_per_image[loc_valid_idxs]
-
+    
             return newmasks_per_image.bool(), scores_per_image, prop_feats_per_image
         else:
             # filter
@@ -389,7 +405,7 @@ class PartRankingModel(nn.Module):
                 masks_per_image = masks_per_image[loc_valid_idxs]
                 scores_per_image = scores_per_image[loc_valid_idxs]
                 prop_feats_per_image = prop_feats_per_image[loc_valid_idxs]
-
+            
             loc_valid_idxs = scores_per_image > self.min_pseudo_mask_score_1
             if loc_valid_idxs.any():
                 masks_per_image = masks_per_image[loc_valid_idxs]
@@ -401,60 +417,60 @@ class PartRankingModel(nn.Module):
 
     def prepare_targets(self, inputs, images):
         if "part_instances" in inputs[0]:
-            # evaluation
+            # evaluation 
             part_targets = [x["part_instances"].to(self.device) for x in inputs]
             object_targets = [x["instances"].to(self.device) for x in inputs]
-            h_pad, w_pad = images.tensor.shape[-2:]
+            h_pad, w_pad = images.tensor.shape[-2:] 
             new_targets = []
             for part_targets_per_image, object_targets_per_image in zip(part_targets, object_targets):
                 gt_mask = part_targets_per_image.gt_masks.tensor
-                padded_masks = torch.zeros((gt_mask.shape[0], h_pad, w_pad),
+                padded_masks = torch.zeros((gt_mask.shape[0], h_pad, w_pad), 
                                         dtype=gt_mask.dtype, device=gt_mask.device)
                 padded_masks[:, : gt_mask.shape[1], : gt_mask.shape[2]] = gt_mask
 
                 gt_obj_mask = object_targets_per_image.gt_masks.tensor
-                padded_obj_mask = torch.zeros((gt_obj_mask.shape[0], h_pad, w_pad),
+                padded_obj_mask = torch.zeros((gt_obj_mask.shape[0], h_pad, w_pad), 
                                         dtype=gt_obj_mask.dtype, device=gt_obj_mask.device)
                 padded_obj_mask[:, : gt_obj_mask.shape[1], : gt_obj_mask.shape[2]] = gt_obj_mask
-                new_targets.append({"part_labels": part_targets_per_image.gt_classes.to(self.device),
-                                    "object_label": object_targets_per_image.gt_classes.to(self.device),
+                new_targets.append({"part_labels": part_targets_per_image.gt_classes.to(self.device), 
+                                    "object_label": object_targets_per_image.gt_classes.to(self.device), 
                                     "masks": padded_masks,
                                     "object_mask": padded_obj_mask})
         else:
             #labeling
             targets = [x["instances"].to(self.device) for x in inputs]
-            h_pad, w_pad = images.tensor.shape[-2:]
+            h_pad, w_pad = images.tensor.shape[-2:] 
             new_targets = []
             for i, targets_per_image in enumerate(targets):
                 gt_mask = targets_per_image.gt_masks.tensor
-                padded_masks = torch.zeros((gt_mask.shape[0], h_pad, w_pad),
+                padded_masks = torch.zeros((gt_mask.shape[0], h_pad, w_pad), 
                                         dtype=gt_mask.dtype, device=gt_mask.device)
                 padded_masks[:, : gt_mask.shape[1], : gt_mask.shape[2]] = gt_mask
 
-                new_targets.append({"object_label": targets_per_image.gt_classes.to(self.device),
+                new_targets.append({"object_label": targets_per_image.gt_classes.to(self.device), 
                                     "masks": padded_masks,
                                     "object_mask": padded_masks})
-
+            
         return new_targets
 
-
+     
     def register_classifier(self, centroids_dict):
         for cid, centroids in centroids_dict.items():
-            num_cls, in_dim = centroids.shape
+            num_cls, in_dim = centroids.shape 
             self.classifier[cid] = nn.Linear(in_dim, num_cls, bias=False).to(self.device)
-            self.classifier[cid].weight.data = centroids.to(self.device)
+            self.classifier[cid].weight.data = centroids.to(self.device) 
 
-
+     
     def use_classifier(self, features, cid):
         if cid not in self.classifier:
             raise ValueError("class ID {} not in classifier. ({})".format(cid, self.classifier.keys()))
 
         if self.classifier_metric == "l2":
-            # Efficient negative l2 distance implementation.
+            # Efficient negative l2 distance implementation. 
             y = self.classifier[cid].weight.data
 
             xy = self.classifier[cid](features)                  # NxK
-            xx = (features * features).sum(dim=1)[:, None]       # Nx1
+            xx = (features * features).sum(dim=1)[:, None]       # Nx1 
             yy = (y * y).sum(dim=1)                              # Kx1
 
             return xy - xx - yy.t()
@@ -462,7 +478,7 @@ class PartRankingModel(nn.Module):
         elif self.classifier_metric == "dot":
             return self.classifier[cid](features)
 
-
+     
     def instance_inference_with_classification(self, proposal_feats, mask_cls, mask_pred, target_mask, target_object_mask, target_label, vis=False):
         # mask_pred is already processed to have the same shape as original input
         image_size = mask_pred.shape[-2:]
@@ -471,9 +487,9 @@ class PartRankingModel(nn.Module):
         object_scores = mask_cls.softmax(-1)[:, :1]
         cls_outputs = self.use_classifier(proposal_feats, target_label.item())
         class_scores = cls_outputs.softmax(-1) # QxK
-
+        
         # score = ranking score * confidence.
-        scores = object_scores * class_scores
+        scores = object_scores * class_scores 
         topk = self.wandb_vis_topk if vis and not self.use_unique_per_pixel_label_during_labeling else self.test_topk_per_image
         labels = torch.arange(self.num_classes(target_label), device=self.device).unsqueeze(0).repeat(self.num_queries, 1).flatten()
         scores_per_image, topk_indices = scores.flatten().topk(topk, sorted=False)
@@ -488,34 +504,34 @@ class PartRankingModel(nn.Module):
                 raise ValueError("Class mapping is not registered.")
         else:
             labels_per_image = labels[topk_indices]
-
+            
         topk_indices = torch.div(topk_indices, self.num_classes(target_label), rounding_mode='floor')
         mask_pred = mask_pred[topk_indices]
 
         # refine part mask with object mask
         mask_pred = self.masking_with_object_mask(mask_pred, target_object_mask)
 
-        # unique mapping and merging
+        # unique mapping and merging 
         mask_pred_bool, scores_per_image, labels_per_image = self._unique_assignment_with_classes(mask_pred, scores_per_image, labels_per_image)
         mask_pred_bool, scores_per_image, labels_per_image = \
                     self.match_gt_masks(mask_pred_bool, scores_per_image, labels_per_image, target_mask)
 
         if mask_pred_bool.shape[0] == 0:
-            # doesn't contribute to the evaluation.
+            # doesn't contribute to the evaluation. 
             mask_pred_bool = mask_pred.new_zeros(1, *mask_pred.shape[1:]).bool()
-            scores_per_image = scores_per_image.new_zeros(1)
+            scores_per_image = scores_per_image.new_zeros(1) 
             labels_per_image = scores_per_image.new_zeros(1).long()
 
         result = Instances(image_size)
         result.pred_masks = mask_pred_bool
         pred_masks_float = result.pred_masks.float()
         result.scores = scores_per_image
-        result.pred_classes = labels_per_image
+        result.pred_classes = labels_per_image 
 
         return result
 
 
-
+     
     def instance_inference_with_proposal_feats(self, proposal_feats, mask_cls, mask_pred, target_mask, target_object_mask, vis=False):
         # mask_pred is already processed to have the same shape as original input
         image_size = mask_pred.shape[-2:]
@@ -529,19 +545,19 @@ class PartRankingModel(nn.Module):
 
         # get unique assignment if needed
         masks_per_image, scores_per_image, prop_feats_per_image = self._unique_assignment(masks_per_image, scores_per_image, prop_feats_per_image)
-
+        
         # refine part masks with object mask if needed
         masks_per_image = self.masking_with_object_mask(masks_per_image, target_object_mask)
 
         return masks_per_image, scores_per_image, prop_feats_per_image
 
 
-
+     
     def wandb_visualize(self, inputs, images, processed_results, opacity=0.8):
         if self.num_iters % self.wandb_vis_period == 0:
             # NOTE: Hack to use input as visualization image.
             images_raw = [x["image"].float().to(self.cpu_device) for x in inputs]
-            images_vis = [retry_if_cuda_oom(sem_seg_postprocess)(img, img_sz, x.get("height", img_sz[0]), x.get("width", img_sz[1]))
+            images_vis = [retry_if_cuda_oom(sem_seg_postprocess)(img, img_sz, x.get("height", img_sz[0]), x.get("width", img_sz[1])) 
                           for img, img_sz, x in zip(images_raw, images.image_sizes, inputs)]
             images_vis = [img.to(self.cpu_device) for img in images_vis]
             result_vis = [r["predictions"].to(self.cpu_device) for r in processed_results]
@@ -549,7 +565,7 @@ class PartRankingModel(nn.Module):
             image, instances, targets = images_vis[0], result_vis[0], target_vis[0]
             image = image.permute(1, 2, 0).to(torch.uint8)
             white = np.ones(image.shape) * 255
-            image = image * opacity + white * (1-opacity)
+            image = image * opacity + white * (1-opacity) 
 
             visualizer = Partvisualizer(image, self.metadata, instance_mode=ColorMode.IMAGE)
             vis_output = visualizer.draw_instance_predictions(predictions=instances)
@@ -559,8 +575,9 @@ class PartRankingModel(nn.Module):
 
             visualizer = Partvisualizer(image, self.metadata, instance_mode=ColorMode.IMAGE)
             vis_output = visualizer.draw_instance_predictions(predictions=targets)
-
+            
             image_gt = wandb.Image(vis_output.get_image())
             wandb.log({"ground_truths": image_gt})
 
-        self.num_iters += 1
+        self.num_iters += 1 
+
